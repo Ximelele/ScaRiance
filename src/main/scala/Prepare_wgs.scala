@@ -1,7 +1,7 @@
 import scala.sys.process.*
 
 class Prepare_wgs:
-  def getAlleleCounts(bamFile: String, outputFile: String, g1000Loci: String, minBaseQual: Int, minMapQual: Int, alleleCounter: String): Unit = {
+  def getAlleleCounts(bamFile: String, outputFile: String, g1000Loci: String, minBaseQual: Int = 20, minMapQual: Int = 35, alleleCounter: String = "alleleCounter"): Unit = {
     var alleleCounterCommand = Seq(
       alleleCounter,
       "-b", bamFile,
