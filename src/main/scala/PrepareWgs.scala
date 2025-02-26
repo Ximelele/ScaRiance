@@ -1,6 +1,6 @@
 import scala.sys.process.*
 
-class Prepare_wgs:
+case class PrepareWgs():
   def getAlleleCounts(bamFile: String, outputFile: String, g1000Loci: String, minBaseQual: Int = 20, minMapQual: Int = 35, alleleCounter: String = "alleleCounter"): Unit = {
     var alleleCounterCommand = Seq(
       alleleCounter,
@@ -20,6 +20,6 @@ class Prepare_wgs:
     println(s"Executing command: $alleleCounterCommand")
 
     val exitCode: Int = alleleCounterCommand.!
-    // Stop the program if the exit code is not 0.
+
     require(exitCode == 0, s"Command failed with exit code $exitCode")
   }
