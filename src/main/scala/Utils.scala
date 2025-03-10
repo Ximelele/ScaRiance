@@ -63,7 +63,7 @@ case class Utils():
       val fullCommand = (samtoolsCmd #| sortCmd)
       val output = Try(fullCommand.!!).getOrElse {
         spark.stop()
-        throw new RuntimeException(s"Failed to execute command: $command")
+        throw new RuntimeException(s"Failed to execute command: $fullCommand")
       }
 
       // Define schema for the DataFrame
