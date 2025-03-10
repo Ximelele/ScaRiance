@@ -42,8 +42,6 @@ case class Utils():
   }
 
 
-
-
   /**
    * Analyzes samtools idxstats output to determine if Chromosome X's Length_per_Read
    * is within 0.1 of the average of other chromosomes.
@@ -95,27 +93,27 @@ case class Utils():
         .withColumn("Length_per_Read", col("Mapped") / col("Length"))
 
       // Extract chrX Length_per_Read
-      val chrXStats = filteredDf.filter(col("Chromosome") === "chrX")
+      val chrXStatsRows = filteredDf.filter(col("Chromosome") === "chrX")
         .select("Length_per_Read")
         .collect()
 
-      if (chrXStats.isEmpty) {
+      if (chrXStatsRows.isEmpty) {
         spark.stop()
         throw new RuntimeException("Chromosome X not found in the data")
       }
 
-      val chrXLengthPerRead = chrXStats(0).getDouble(0)
+      val chrXLengthPerRead = chrXStatsRows(0).getDouble(0)
 
       // Calculate average Length_per_Read for other chromosomes
-      val totalStats = filteredDf.agg(
+      val statsRow = filteredDf.agg(
         sum("Length_per_Read").as("totalLengthPerRead"),
         count("*").as("count")
       ).collect()(0)
 
-      val totalLengthPerRead = totalStats.getDouble(0)
-      val count = totalStats.getLong(1)
+      val totalLengthPerRead = statsRow.getDouble(0)
+      val rowCount = statsRow.getLong(1)
 
-      val avgLengthPerRead = (totalLengthPerRead - chrXLengthPerRead) / (count - 1)
+      val avgLengthPerRead = (totalLengthPerRead - chrXLengthPerRead) / (rowCount - 1)
 
       // Compare values
       val comparison = Math.abs(chrXLengthPerRead - avgLengthPerRead)
@@ -151,7 +149,7 @@ case class Utils():
       ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
 
     } else {
-      chromosomeNames = (1 to 22) :+ "chrX"
+      chromosomeNames = ((1 to 22) :+ "chrX").toList.par
     }
   }
 
