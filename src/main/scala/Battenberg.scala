@@ -7,16 +7,10 @@ case class Battenberg(control_file: String, tumour_file: String):
   private val utils = Utils()
   private var male: Boolean = true
 
+
   private def setDefaultValues(): Unit = {
     this.utils.setChromosomesNames(control_file)
     this.utils.createPatientDirectory(control_file.split("/").last)
-
-    //    this.utils.chromosomeNames.foreach(chromsome => {
-    //
-    //      haf(chromsome)
-    //    }
-    //    )git
-
   }
 
   def run(): Unit = {
@@ -27,6 +21,9 @@ case class Battenberg(control_file: String, tumour_file: String):
       .getOrCreate()
 
     this.male = this.utils.isMale(tumour_file)
+
+
+    spark.stop()
 
   }
 
