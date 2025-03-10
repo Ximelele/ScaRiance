@@ -5,7 +5,7 @@ import scala.collection.parallel.CollectionConverters.*
 case class Battenberg(control_file: String, tumour_file: String):
 
   private val utils = Utils()
-
+  private var male: Boolean = true
 
   private def setDefaultValues(): Unit = {
     this.utils.setChromosomesNames(control_file)
@@ -15,7 +15,7 @@ case class Battenberg(control_file: String, tumour_file: String):
     //
     //      haf(chromsome)
     //    }
-    //    )
+    //    )git
 
   }
 
@@ -26,7 +26,7 @@ case class Battenberg(control_file: String, tumour_file: String):
       .master("local[*]")
       .getOrCreate()
 
-    this.utils.isMale(tumour_file)
+    this.male = this.utils.isMale(tumour_file)
 
   }
 

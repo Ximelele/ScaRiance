@@ -15,7 +15,7 @@ case class Utils():
   var allele_directory: String = "Allele_frequencies"
   var chromosomeNames: ParSeq[Any] = ParSeq()
 
-  def isMale: Boolean = {
+  def isMale(sampleName: String): Boolean = {
     val spark = SparkSession.builder()
       .appName("Battenberg")
       .master("local[*]")
