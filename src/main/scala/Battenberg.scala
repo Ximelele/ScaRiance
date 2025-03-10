@@ -23,7 +23,7 @@ case class Battenberg(control_file: String, tumour_file: String):
   }
 
   def run(): Unit = {
-    this.setDefaultValues()
+//    this.setDefaultValues()
 
     this.utils.analyzeIdxstats(tumour_file)
 

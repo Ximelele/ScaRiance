@@ -58,8 +58,10 @@ case class Utils():
 
     try {
       // Run samtools command and capture output
-      val command = s"samtools idxstats $sampleName | sort"
-      val output = Try(command.!!).getOrElse {
+      val samtoolsCmd = Seq("samtools", "idxstats", sampleName)
+      val sortCmd = Seq("sort")
+      val fullCommand = (samtoolsCmd #| sortCmd)
+      val output = Try(fullCommand.!!).getOrElse {
         spark.stop()
         throw new RuntimeException(s"Failed to execute command: $command")
       }
