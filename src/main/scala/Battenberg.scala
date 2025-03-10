@@ -6,7 +6,7 @@ case class Battenberg(control_file: String, tumour_file: String):
 
   private val utils = Utils()
   private var male: Boolean = true
-
+  private val prepare_Wgs = PrepareWgs()
 
   private def setDefaultValues(): Unit = {
     this.utils.setChromosomesNames(control_file)
@@ -21,7 +21,7 @@ case class Battenberg(control_file: String, tumour_file: String):
       .getOrCreate()
 
     this.male = this.utils.isMale(tumour_file)
-
+    prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
 
     spark.stop()
 
