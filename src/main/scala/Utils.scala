@@ -65,7 +65,7 @@ case class Utils():
         spark.stop()
         throw new RuntimeException(s"Failed to execute command: $fullCommand")
       }
-
+      println(fullCommand)
       // Define schema for the DataFrame
       val schema = StructType(Array(
         StructField("Chromosome", StringType, nullable = false),
@@ -84,12 +84,14 @@ case class Utils():
         }
       }
 
+      println(rows)
+
       // Create DataFrame from rows and schema
       val df = spark.createDataFrame(
         spark.sparkContext.parallelize(rows.toSeq),
         schema
       )
-
+      println(df)
       // Filter chromosomes and add Length_per_Read column
       val filteredDf = df.filter(!col("Chromosome").contains("_") && col("Chromosome") =!= "chrM")
         .withColumn("Length_per_Read", col("Mapped") / col("Length"))
