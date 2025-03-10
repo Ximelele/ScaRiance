@@ -2,8 +2,9 @@ import java.io.File
 import scala.collection.parallel.CollectionConverters.*
 import scala.collection.parallel.ParSeq
 import scala.sys.process.*
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession, Row}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
 import scala.sys.process._
 import scala.util.Try
 
@@ -41,6 +42,8 @@ case class Utils():
   }
 
 
+
+
   /**
    * Analyzes samtools idxstats output to determine if Chromosome X's Length_per_Read
    * is within 0.1 of the average of other chromosomes.
@@ -55,8 +58,6 @@ case class Utils():
       .master("local[*]")
       .getOrCreate()
 
-    import spark.implicits._
-
     try {
       // Run samtools command and capture output
       val command = s"samtools idxstats $sampleName | sort"
@@ -65,15 +66,29 @@ case class Utils():
         throw new RuntimeException(s"Failed to execute command: $command")
       }
 
-      // Convert output to DataFrame
-      val df = output.trim.split("\n").map { line =>
+      // Define schema for the DataFrame
+      val schema = StructType(Array(
+        StructField("Chromosome", StringType, nullable = false),
+        StructField("Length", LongType, nullable = false),
+        StructField("Mapped", LongType, nullable = false),
+        StructField("Unmapped", LongType, nullable = false)
+      ))
+
+      // Convert output to Row objects
+      val rows = output.trim.split("\n").map { line =>
         val fields = line.split("\t")
         if (fields.length == 4) {
-          (fields(0), fields(1).toLong, fields(2).toLong, fields(3).toLong)
+          Row(fields(0), fields(1).toLong, fields(2).toLong, fields(3).toLong)
         } else {
-          ("invalid", 0L, 0L, 0L) // Handle invalid lines
+          Row("invalid", 0L, 0L, 0L) // Handle invalid lines
         }
-      }.toSeq.toDF("Chromosome", "Length", "Mapped", "Unmapped")
+      }
+
+      // Create DataFrame from rows and schema
+      val df = spark.createDataFrame(
+        spark.sparkContext.parallelize(rows.toSeq),
+        schema
+      )
 
       // Filter chromosomes and add Length_per_Read column
       val filteredDf = df.filter(!col("Chromosome").contains("_") && col("Chromosome") =!= "chrM")
@@ -107,7 +122,6 @@ case class Utils():
       val result = comparison < 0.1
 
       spark.stop()
-      println(result)
       result
 
     } catch {
@@ -115,6 +129,12 @@ case class Utils():
         spark.stop()
         throw e
     }
+  }
+
+  // Helper function to create a list of chromosomes (1-22 + X)
+  def createChromosomeList(): Seq[String] = {
+    val autosomes = (1 to 22).map(i => s"chr$i")
+    autosomes :+ "chrX"
   }
 
   def setChromosomesNames(bamFile: String): Unit = {
