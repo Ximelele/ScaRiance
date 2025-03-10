@@ -10,7 +10,7 @@ case class PrepareWgs():
       getAlleleCounts(bamFile = tumourFile, outputFile = s"${utils.allele_directory}/${tumourFile.split(" / ").last}/_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.g1000prefix}$chromsome.txt")
 
       getAlleleCounts(bamFile = controlFile, outputFile = s"${utils.allele_directory}/${controlFile.split("/").last}/_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.g1000prefix}$chromsome.txt")
-    }
+    })
 
   }
 
