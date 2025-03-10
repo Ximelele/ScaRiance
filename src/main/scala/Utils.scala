@@ -138,10 +138,10 @@ case class Utils():
     val chromosomePrefix = command.!!
 
     if (chromosomePrefix.contains("chr")) {
-      ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
+      chromosomeNames = ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
 
     } else {
-      chromosomeNames = ((1 to 22) :+ "chrX").toList.par
+      chromosomeNames = ((1 to 22) :+ "X").toList.par
     }
   }
 
