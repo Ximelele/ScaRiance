@@ -5,7 +5,7 @@ case class PrepareWgs():
 
   def prepareWgs(utils: Utils, controlFile: String, tumourFile: String): Unit = {
 
-
+    println("Meow")
     utils.chromosomeNames.foreach(chromsome => {
       getAlleleCounts(bamFile = tumourFile, outputFile = s"${utils.allele_directory}/${tumourFile.split(" / ").last}/_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.g1000prefix}$chromsome.txt")
 
@@ -23,7 +23,7 @@ case class PrepareWgs():
       "-m", minBaseQual.toString,
       "-q", minMapQual.toString
     ).mkString(" ")
-
+    println("Dpci koncim")
     val counterVersion: String = s"$alleleCounter --version".!!.trim
     println(s"AlleleCounter version: $counterVersion")
 

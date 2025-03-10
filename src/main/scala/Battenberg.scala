@@ -21,6 +21,7 @@ case class Battenberg(control_file: String, tumour_file: String):
       .getOrCreate()
 
     this.male = this.utils.isMale(tumour_file)
+    println("Idem riesit allele")
     prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
 
     spark.stop()
