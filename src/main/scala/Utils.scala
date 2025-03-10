@@ -16,48 +16,13 @@ case class Utils():
   var chromosomeNames: ParSeq[Any] = ParSeq()
 
   def isMale: Boolean = {
-    true
-  }
-
-
-  private def checkCorrectExecution(path_to_directory: String): Unit = {
-    val dir = new File(path_to_directory)
-    if (!dir.exists()) {
-      val created = dir.mkdir()
-      require(created, s"Patient directory couldn't be created")
-    }
-  }
-
-  def createPatientDirectory(patient_name: String): Unit = {
-
-    working_directory = s"$working_directory/$patient_name"
-    plots_directory = s"$working_directory/$plots_directory"
-    impute_directory = s"$working_directory/$impute_directory"
-    allele_directory = s"$working_directory/$allele_directory"
-
-    val new_directories: Seq[String] = Seq(working_directory, plots_directory, impute_directory, allele_directory)
-
-    new_directories.foreach(checkCorrectExecution)
-
-  }
-
-
-  /**
-   * Analyzes samtools idxstats output to determine if Chromosome X's Length_per_Read
-   * is within 0.1 of the average of other chromosomes.
-   *
-   * @param sampleName Path to the BAM file to analyze
-   * @return Boolean indicating if the comparison is within the threshold
-   */
-  def analyzeIdxstats(sampleName: String): Boolean = {
-    // Create a Spark session
     val spark = SparkSession.builder()
-      .appName("SamtoolsIdxstatsAnalyzer")
+      .appName("Battenberg")
       .master("local[*]")
       .getOrCreate()
 
     try {
-      // Run samtools command and capture output
+
       val samtoolsCmd = Seq("samtools", "idxstats", sampleName)
       val sortCmd = Seq("sort")
       val fullCommand = (samtoolsCmd #| sortCmd)
@@ -65,8 +30,8 @@ case class Utils():
         spark.stop()
         throw new RuntimeException(s"Failed to execute command: $fullCommand")
       }
-      println(fullCommand)
-      // Define schema for the DataFrame
+
+
       val schema = StructType(Array(
         StructField("Chromosome", StringType, nullable = false),
         StructField("Length", LongType, nullable = false),
@@ -84,14 +49,13 @@ case class Utils():
         }
       }
 
-      println(rows)
 
       // Create DataFrame from rows and schema
       val df = spark.createDataFrame(
         spark.sparkContext.parallelize(rows.toSeq),
         schema
       )
-      println(df)
+
       // Filter chromosomes and add Length_per_Read column
       val filteredDf = df.filter(!col("Chromosome").contains("_") && col("Chromosome") =!= "chrM")
         .withColumn("Length_per_Read", col("Mapped") / col("Length"))
@@ -123,7 +87,6 @@ case class Utils():
       val comparison = Math.abs(chrXLengthPerRead - avgLengthPerRead)
       val result = comparison < 0.1
 
-      spark.stop()
       result
 
     } catch {
@@ -132,6 +95,29 @@ case class Utils():
         throw e
     }
   }
+
+
+  private def checkCorrectExecution(path_to_directory: String): Unit = {
+    val dir = new File(path_to_directory)
+    if (!dir.exists()) {
+      val created = dir.mkdir()
+      require(created, s"Patient directory couldn't be created")
+    }
+  }
+
+  def createPatientDirectory(patient_name: String): Unit = {
+
+    working_directory = s"$working_directory/$patient_name"
+    plots_directory = s"$working_directory/$plots_directory"
+    impute_directory = s"$working_directory/$impute_directory"
+    allele_directory = s"$working_directory/$allele_directory"
+
+    val new_directories: Seq[String] = Seq(working_directory, plots_directory, impute_directory, allele_directory)
+
+    new_directories.foreach(checkCorrectExecution)
+
+  }
+
 
   // Helper function to create a list of chromosomes (1-22 + X)
   def createChromosomeList(): Seq[String] = {

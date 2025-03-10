@@ -13,6 +13,8 @@ libraryDependencies ++= Seq(
 
   ("org.apache.spark" %% "spark-sql" % "3.5.5").cross(CrossVersion.for3Use2_13),
   ("org.apache.spark" %% "spark-core" % "3.5.5").cross(CrossVersion.for3Use2_13),
+  ("org.apache.hadoop" % "hadoop-client-api" % "3.4.1").cross(CrossVersion.for3Use2_13),
+  ("org.apache.hadoop" % "hadoop-client-runtime" % "3.4.1").cross(CrossVersion.for3Use2_13),
   ("org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0").cross(CrossVersion.for3Use2_13)
 
 )
