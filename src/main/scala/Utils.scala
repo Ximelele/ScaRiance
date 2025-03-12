@@ -3,163 +3,12 @@ import org.apache.spark.sql.types.*
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 import java.io.File
+import scala.collection.mutable.ArrayBuffer
 import scala.collection.parallel.CollectionConverters.*
 import scala.collection.parallel.ParSeq
+import scala.io.Source
 import scala.sys.process.*
 import scala.util.Try
-
-def concatenateAlleleCountFiles(inputStart: String, inputEnd: String, chrNames: List[String]): DataFrame = {
-  import org.apache.spark.sql.{DataFrame, SparkSession}
-
-  val spark = SparkSession.builder()
-    .appName("Battenberg")
-    .getOrCreate()
-
-  // Find valid input files
-  val infiles = chrNames.flatMap { chrom =>
-    val filename = s"${inputStart}${chrom}${inputEnd}"
-    val file = new File(filename)
-    if (file.exists() && file.length() > 0) {
-      Some(filename)
-    } else {
-      None
-    }
-  }
-
-  // Read and combine all files
-  if (infiles.isEmpty) {
-    // Return empty DataFrame with appropriate schema
-    spark.emptyDataFrame
-  } else {
-    // Read first file to get schema
-    val firstDf = readTableGeneric(infiles.head)
-
-    // Read remaining files and union them
-    val allDfs = infiles.tail.foldLeft(firstDf) { (combinedDf, file) =>
-      val df = readTableGeneric(file)
-      combinedDf.union(df)
-    }
-
-    allDfs.allDfs.write
-      .mode("overwrite") // Can also be "append"
-      .option("delimiter", "\t") // Set delimiter to tab character
-      .option("header", "true") // Optionally include header row
-      .csv("test.txt")
-  }
-}
-import java.io.File
-import scala.collection.mutable.ArrayBuffer
-
-def readTableGeneric(
-                      file: String,
-                      header: Boolean = true,
-                      rowNames: Boolean = false,
-                      stringsAsFactor: Boolean = false, // kept for legacy purposes but not used
-                      sep: String = "\t",
-                      chromCol: List[Int] = List(1),
-                      skip: Int = 0
-                    ): DataFrame = {
-
-  // Skip initial lines if needed
-  val iterator = Source.fromFile(file).getLines().drop(skip)
-
-  // Read first line to get header
-  val firstLine = if (iterator.hasNext) iterator.next() else ""
-  val headerColumns = if (header) firstLine.split(sep).map(_.replaceAll(" ", ".")) else
-    (1 to firstLine.split(sep).length).map(i => s"V$i").toArray
-
-  // Read the rest of the file
-  val rows = ArrayBuffer[Array[String]]()
-
-  // Add first line to data if it's not a header
-  if (!header) {
-    rows += firstLine.split(sep)
-  }
-
-  // Read remaining lines
-  while (iterator.hasNext) {
-    val line = iterator.next()
-    rows += line.split(sep)
-  }
-
-  // Convert to DataFrame
-  import org.apache.spark.sql.types.*
-  import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-
-  // Create SparkSession
-  val spark = SparkSession.builder()
-    .appName("Battenberg")
-    .getOrCreate()
-
-  // Infer schema (with special handling for chromosome columns)
-  val schemaFields = headerColumns.zipWithIndex.map { case (colName, idx) =>
-    if (chromCol.contains(idx + 1)) {
-      StructField(colName, StringType, nullable = true)
-    } else {
-      // Simple type inference - could be enhanced
-      val sampleValues = rows.take(10).map(row => if (row.length > idx) row(idx) else "")
-      val isNumeric = sampleValues.forall(s => s.isEmpty || s.matches("^-?\\d+(\\.\\d+)?$"))
-      if (isNumeric) StructField(colName, DoubleType, nullable = true)
-      else StructField(colName, StringType, nullable = true)
-    }
-  }
-
-  val schema = StructType(schemaFields)
-
-  // Create rows
-  val rowsRDD = spark.sparkContext.parallelize(rows.map(arr => Row(arr: _*)))
-
-  // Create DataFrame
-  var df = spark.createDataFrame(rowsRDD, schema)
-
-  // Handle row names if needed
-  if (rowNames) {
-    // Create a new column with row names
-    import org.apache.spark.sql.functions.*
-    val rowNamesColumn = df.columns(0)
-    df = df.drop(rowNamesColumn)
-    // Note: In Spark DataFrames, there's no direct equivalent to R's row names
-  }
-
-  df
-}
-
-def createPatientDirectory(patient_name: String): Unit = {
-
-  working_directory = s"$working_directory/$patient_name"
-  plots_directory = s"$working_directory/$plots_directory"
-  impute_directory = s"$working_directory/$impute_directory"
-  allele_directory = s"$working_directory/$allele_directory"
-
-  val new_directories: Seq[String] = Seq(working_directory, plots_directory, impute_directory, allele_directory)
-
-  new_directories.foreach(checkCorrectExecution)
-
-}
-
-// Helper function to create a list of chromosomes (1-22 + X)
-def createChromosomeList(): Seq[String] = {
-  val autosomes = (1 to 22).map(i => s"chr$i")
-  autosomes :+ "chrX"
-}
-
-def setChromosomesNames(bamFile: String): Unit = {
-  val command = Seq(
-    "samtools",
-    "view", "-H", bamFile
-  ).mkString(" ")
-  println(command)
-
-
-  val chromosomePrefix = command.!!
-
-  if (chromosomePrefix.contains("chr")) {
-    chromosomeNames = ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
-
-  } else {
-    chromosomeNames = ((1 to 22) :+ "X").toList.par
-  }
-}
 
 case class Utils():
   val g1000prefix: String = "/app/references38/1000G_loci_hg38/1kg.phase3.v5a_GRCh38nounref_loci_"
@@ -168,6 +17,155 @@ case class Utils():
   var plots_directory: String = "Plots"
   var allele_directory: String = "Allele_frequencies"
   var chromosomeNames: ParSeq[Any] = ParSeq()
+
+
+  def concatenateAlleleCountFiles(inputStart: String, inputEnd: String, chrNames: List[String]): DataFrame = {
+    import org.apache.spark.sql.{DataFrame, SparkSession}
+
+    val spark = SparkSession.builder()
+      .appName("Battenberg")
+      .getOrCreate()
+
+    // Find valid input files
+    val infiles = chrNames.flatMap { chrom =>
+      val filename = s"${inputStart}${chrom}${inputEnd}"
+      val file = new File(filename)
+      if (file.exists() && file.length() > 0) {
+        Some(filename)
+      } else {
+        None
+      }
+    }
+
+    // Read and combine all files
+    if (infiles.isEmpty) {
+      // Return empty DataFrame with appropriate schema
+      spark.emptyDataFrame
+    } else {
+      // Read first file to get schema
+      val firstDf = readTableGeneric(infiles.head)
+
+      // Read remaining files and union them
+      val allDfs = infiles.tail.foldLeft(firstDf) { (combinedDf, file) =>
+        val df = readTableGeneric(file)
+        combinedDf.union(df)
+      }
+
+      allDfs.allDfs.write
+        .mode("overwrite") // Can also be "append"
+        .option("delimiter", "\t") // Set delimiter to tab character
+        .option("header", "true") // Optionally include header row
+        .csv("test.txt")
+    }
+  }
+
+  def readTableGeneric(
+                        file: String,
+                        header: Boolean = true,
+                        rowNames: Boolean = false,
+                        stringsAsFactor: Boolean = false, // kept for legacy purposes but not used
+                        sep: String = "\t",
+                        chromCol: List[Int] = List(1),
+                        skip: Int = 0
+                      ): DataFrame = {
+
+    // Skip initial lines if needed
+    val iterator = Source.fromFile(file).getLines().drop(skip)
+
+    // Read first line to get header
+    val firstLine = if (iterator.hasNext) iterator.next() else ""
+    val headerColumns = if (header) firstLine.split(sep).map(_.replaceAll(" ", ".")) else
+      (1 to firstLine.split(sep).length).map(i => s"V$i").toArray
+
+    // Read the rest of the file
+    val rows = ArrayBuffer[Array[String]]()
+
+    // Add first line to data if it's not a header
+    if (!header) {
+      rows += firstLine.split(sep)
+    }
+
+    // Read remaining lines
+    while (iterator.hasNext) {
+      val line = iterator.next()
+      rows += line.split(sep)
+    }
+
+
+    // Create SparkSession
+    val spark = SparkSession.builder()
+      .appName("Battenberg")
+      .getOrCreate()
+
+    // Infer schema (with special handling for chromosome columns)
+    val schemaFields = headerColumns.zipWithIndex.map { case (colName, idx) =>
+      if (chromCol.contains(idx + 1)) {
+        StructField(colName, StringType, nullable = true)
+      } else {
+        // Simple type inference - could be enhanced
+        val sampleValues = rows.take(10).map(row => if (row.length > idx) row(idx) else "")
+        val isNumeric = sampleValues.forall(s => s.isEmpty || s.matches("^-?\\d+(\\.\\d+)?$"))
+        if (isNumeric) StructField(colName, DoubleType, nullable = true)
+        else StructField(colName, StringType, nullable = true)
+      }
+    }
+
+    val schema = StructType(schemaFields)
+
+    // Create rows
+    val rowsRDD = spark.sparkContext.parallelize(rows.map(arr => Row(arr: _*)))
+
+    // Create DataFrame
+    var df = spark.createDataFrame(rowsRDD, schema)
+
+    // Handle row names if needed
+    if (rowNames) {
+      // Create a new column with row names
+      import org.apache.spark.sql.functions.*
+      val rowNamesColumn = df.columns(0)
+      df = df.drop(rowNamesColumn)
+      // Note: In Spark DataFrames, there's no direct equivalent to R's row names
+    }
+
+    df
+  }
+
+  def createPatientDirectory(patient_name: String): Unit = {
+
+    working_directory = s"$working_directory/$patient_name"
+    plots_directory = s"$working_directory/$plots_directory"
+    impute_directory = s"$working_directory/$impute_directory"
+    allele_directory = s"$working_directory/$allele_directory"
+
+    val new_directories: Seq[String] = Seq(working_directory, plots_directory, impute_directory, allele_directory)
+
+    new_directories.foreach(checkCorrectExecution)
+
+  }
+
+  // Helper function to create a list of chromosomes (1-22 + X)
+  def createChromosomeList(): Seq[String] = {
+    val autosomes = (1 to 22).map(i => s"chr$i")
+    autosomes :+ "chrX"
+  }
+
+  def setChromosomesNames(bamFile: String): Unit = {
+    val command = Seq(
+      "samtools",
+      "view", "-H", bamFile
+    ).mkString(" ")
+    println(command)
+
+
+    val chromosomePrefix = command.!!
+
+    if (chromosomePrefix.contains("chr")) {
+      chromosomeNames = ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
+
+    } else {
+      chromosomeNames = ((1 to 22) :+ "X").toList.par
+    }
+  }
 
   def isMale(sampleName: String): Boolean = {
     val spark = SparkSession.builder()
@@ -257,7 +255,7 @@ case class Utils():
     }
   }
 
-  import scala.io.Source
+
 
 
 

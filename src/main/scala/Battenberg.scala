@@ -16,7 +16,6 @@ case class Battenberg(control_file: String, tumour_file: String):
       .getOrCreate()
 
     this.male = this.utils.isMale(tumour_file)
-    concatenateAlleleCountFiles(inputStart = s"${this.utils.allele_directory}/${controlFile.split("/").last}_alleleFrequencies_", inputEnd = ".txt", chrNames = this.utils.chromosomeNames)
     //    prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
 
     spark.stop()
