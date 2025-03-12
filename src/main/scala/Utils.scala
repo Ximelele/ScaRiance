@@ -44,8 +44,7 @@ def concatenateAlleleCountFiles(inputStart: String, inputEnd: String, chrNames: 
       .mode("overwrite") // Can also be "append"
       .option("delimiter", "\t") // Set delimiter to tab character
       .option("header", "true") // Optionally include header row
-      .csv('test.txt
-    ')
+      .csv("test.txt")
   }
 }
 import java.io.File
