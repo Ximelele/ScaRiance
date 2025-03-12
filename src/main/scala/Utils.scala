@@ -51,7 +51,7 @@ case class Utils():
         combinedDf.union(df)
       }
 
-      allDfs.allDfs.write
+      allDfs.write
         .mode("overwrite") // Can also be "append"
         .option("delimiter", "\t") // Set delimiter to tab character
         .option("header", "true") // Optionally include header row
