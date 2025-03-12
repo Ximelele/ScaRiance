@@ -1,15 +1,13 @@
 import scala.sys.process.*
 
-//import scala.collection.parallel.CollectionConverters._
 case class PrepareWgs():
 
   def prepareWgs(utils: Utils, controlFile: String, tumourFile: String): Unit = {
 
-    println("Meow")
     utils.chromosomeNames.foreach(chromsome => {
-      getAlleleCounts(bamFile = tumourFile, outputFile = s"${utils.allele_directory}/${tumourFile.split(" / ").last}/_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.g1000prefix}$chromsome.txt")
+      getAlleleCounts(bamFile = tumourFile, outputFile = s"${utils.allele_directory}/${tumourFile.split("/").last}_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.g1000prefix}$chromsome.txt")
 
-      getAlleleCounts(bamFile = controlFile, outputFile = s"${utils.allele_directory}/${controlFile.split("/").last}/_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.g1000prefix}$chromsome.txt")
+      getAlleleCounts(bamFile = controlFile, outputFile = s"${utils.allele_directory}/${controlFile.split("/").last}_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.g1000prefix}$chromsome.txt")
     })
 
   }
@@ -23,14 +21,11 @@ case class PrepareWgs():
       "-m", minBaseQual.toString,
       "-q", minMapQual.toString
     ).mkString(" ")
-    println("Dpci koncim")
+
     val counterVersion: String = s"$alleleCounter --version".!!.trim
-    println(s"AlleleCounter version: $counterVersion")
 
     if counterVersion.substring(0, 1).toInt >= 4 then
       alleleCounterCommand = s"$alleleCounterCommand --dense-snps"
-
-    println(s"Executing command: $alleleCounterCommand")
 
     val exitCode: Int = alleleCounterCommand.!
 
