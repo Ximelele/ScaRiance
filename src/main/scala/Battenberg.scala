@@ -15,7 +15,7 @@ case class Battenberg(control_file: String, tumour_file: String):
     //    this.male = this.utils.isMale(tumour_file)
     prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
     println("Macka Macka")
-    spark.stop()
+
 
   }
 

@@ -20,7 +20,7 @@ case class PrepareWgs():
       .getOrCreate()
 
     utils.processAlleleData(spark = spark, tumourAlleleCountsFilePrefix = tumourAlleleCountsFilePrefix, normalAlleleCountsFilePrefix = normalAlleleCountsFilePrefix, minCounts = 10, samplename = utils.tumourName, BAFnormalFile = s"${utils.working_directory}/${utils.tumourName}_normalBAF.tab", BAFmutantFile = s"${utils.working_directory}/${utils.tumourName}_mutantBAF.tab", logRnormalFile = s"${utils.working_directory}/${utils.tumourName}_normalLogR.tab", logRmutantFile = s"${utils.working_directory}/${utils.tumourName}_mutantLogR.tab", combinedAlleleCountsFile = s"${utils.working_directory}/${utils.tumourName}_alleleCounts.tab")
-
+    spark.stop()
   }
 
   def getAlleleCounts(bamFile: String, outputFile: String, g1000Loci: String, minBaseQual: Int = 20, minMapQual: Int = 35, alleleCounter: String = "alleleCounter"): Unit = {
