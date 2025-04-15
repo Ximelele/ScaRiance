@@ -13,6 +13,7 @@ case class PrepareWgs():
     //
     //      getAlleleCounts(bamFile = controlFile, outputFile = s"${utils.allele_directory}/${controlFile.split("/").last}_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.g1000prefix}$chromsome.txt")
     //    })
+
     val spark = SparkSession.builder()
       .appName("Battenberg")
       .master("local[*]")
