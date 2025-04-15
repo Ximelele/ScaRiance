@@ -6,6 +6,7 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.CollectionConverters.*
 import scala.collection.parallel.ParSeq
 import scala.sys.process._
+import scala.util.Try
 
 case class Utils():
   val g1000prefix: String = "/app/references38/1000G_loci_hg38/1kg.phase3.v5a_GRCh38nounref_loci_"
