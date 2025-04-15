@@ -15,16 +15,18 @@ case class Battenberg(control_file: String, tumour_file: String):
       .master("local[*]")
       .getOrCreate()
 
-    this.male = this.utils.isMale(tumour_file)
-    //    prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
-
+    //    this.male = this.utils.isMale(tumour_file)
+    prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
+    println("Macka Macka")
     spark.stop()
 
   }
 
   private def setDefaultValues(): Unit = {
+    this.utils.tumourName = tumour_file.split("/").last
+    this.utils.controlName = control_file.split("/").last
     this.utils.setChromosomesNames(control_file)
-    this.utils.createPatientDirectory(control_file.split("/").last)
+    this.utils.createPatientDirectory(this.utils.controlName)
   }
 
 
