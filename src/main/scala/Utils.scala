@@ -21,7 +21,7 @@ case class Utils():
 
   import org.apache.spark.sql.functions.*
   import org.apache.spark.sql.types.*
-  import org.apache.spark.sql.{DataFrame, SparkSession}
+  import org.apache.spark.sql.{DataFrame, SparkSession, Row}
 
   import scala.util.Random
 
