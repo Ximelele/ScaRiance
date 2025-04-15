@@ -5,6 +5,7 @@ import java.nio.file.{Files, Paths, StandardCopyOption}
 import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.CollectionConverters.*
 import scala.collection.parallel.ParSeq
+import scala.sys.process._
 
 case class Utils():
   val g1000prefix: String = "/app/references38/1000G_loci_hg38/1kg.phase3.v5a_GRCh38nounref_loci_"
@@ -221,7 +222,7 @@ case class Utils():
       .select("total")
     val mutCount1 = createCountColumn(mutantWithIndex, "a0", "mutCount1")
     val mutCount2 = createCountColumn(mutantWithIndex, "a1", "mutCount2")
-    val totalMutantDF = mutCount1.join(mutCount2).withColumn("total", col("mutCount1") +col("mutCount2"))
+    val totalMutantDF = mutCount1.join(mutCount2).withColumn("total", col("mutCount1") + col("mutCount2"))
       .select("total")
 
     saveSingleFile(totalNormalDF, "totalNormal")
@@ -562,102 +563,102 @@ case class Utils():
 
 
   def setChromosomesNames(bamFile: String): Unit = {
-        val command = Seq(
-          "samtools",
-          "view", "-H", bamFile
-        ).mkString(" ")
-        println(command)
+    val command = Seq(
+      "samtools",
+      "view", "-H", bamFile
+    ).mkString(" ")
+    println(command)
 
 
-        val chromosomePrefix = command.!!
+    val chromosomePrefix = command.!!
 
-        if (chromosomePrefix.contains("chr")) {
-          chromosomeNames = ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
+    if (chromosomePrefix.contains("chr")) {
+      chromosomeNames = ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
 
-        } else {
-          chromosomeNames = ((1 to 22) :+ "X").toList.par
-        }
+    } else {
+      chromosomeNames = ((1 to 22) :+ "X").toList.par
+    }
 
   }
 
-    def isMale(sampleName: String): Boolean = {
-      val spark = SparkSession.builder()
-        .appName("Battenberg")
-        .master("local[*]")
-        .getOrCreate()
+  def isMale(sampleName: String): Boolean = {
+    val spark = SparkSession.builder()
+      .appName("Battenberg")
+      .master("local[*]")
+      .getOrCreate()
 
-      try {
+    try {
 
-        val samtoolsCmd = Seq("samtools", "idxstats", sampleName)
-        val sortCmd = Seq("sort")
-        val fullCommand = (samtoolsCmd #| sortCmd)
-        val output = Try(fullCommand.!!).getOrElse {
-          spark.stop()
-          throw new RuntimeException(s"Failed to execute command: $fullCommand")
-        }
-
-
-        val schema = StructType(Array(
-          StructField("Chromosome", StringType, nullable = false),
-          StructField("Length", LongType, nullable = false),
-          StructField("Mapped", LongType, nullable = false),
-          StructField("Unmapped", LongType, nullable = false)
-        ))
-
-        // Convert output to Row objects
-        val rows = output.trim.split("\n").map { line =>
-          val fields = line.split("\t")
-          if (fields.length == 4) {
-            Row(fields(0), fields(1).toLong, fields(2).toLong, fields(3).toLong)
-          } else {
-            Row("invalid", 0L, 0L, 0L) // Handle invalid lines
-          }
-        }
-
-
-        // Create DataFrame from rows and schema
-        val df = spark.createDataFrame(
-          spark.sparkContext.parallelize(rows.toSeq),
-          schema
-        )
-
-        val filteredDf = df.filter(!col("Chromosome").contains("_") && col("Chromosome") =!= "chrM")
-          .withColumn("Length_per_Read", col("Mapped") / col("Length"))
-
-
-        val chrXStatsRows = filteredDf.filter(col("Chromosome") === "chrX")
-          .select("Length_per_Read")
-          .collect()
-
-        if (chrXStatsRows.isEmpty) {
-          spark.stop()
-          throw new RuntimeException("Chromosome X not found in the data")
-        }
-
-        val chrXLengthPerRead = chrXStatsRows(0).getDouble(0)
-
-        val statsRow = filteredDf.agg(
-          sum("Length_per_Read").as("totalLengthPerRead"),
-          count("*").as("count")
-        ).collect()(0)
-
-        val totalLengthPerRead = statsRow.getDouble(0)
-        val rowCount = statsRow.getLong(1)
-
-        val avgLengthPerRead = (totalLengthPerRead - chrXLengthPerRead) / (rowCount - 1)
-
-        // Compare values
-        val comparison = Math.abs(chrXLengthPerRead - avgLengthPerRead)
-        val result = comparison < 0.1
-
-        result
-
-      } catch {
-        case e: Exception =>
-          spark.stop()
-          throw e
+      val samtoolsCmd = Seq("samtools", "idxstats", sampleName)
+      val sortCmd = Seq("sort")
+      val fullCommand = (samtoolsCmd #| sortCmd)
+      val output = Try(fullCommand.!!).getOrElse {
+        spark.stop()
+        throw new RuntimeException(s"Failed to execute command: $fullCommand")
       }
+
+
+      val schema = StructType(Array(
+        StructField("Chromosome", StringType, nullable = false),
+        StructField("Length", LongType, nullable = false),
+        StructField("Mapped", LongType, nullable = false),
+        StructField("Unmapped", LongType, nullable = false)
+      ))
+
+      // Convert output to Row objects
+      val rows = output.trim.split("\n").map { line =>
+        val fields = line.split("\t")
+        if (fields.length == 4) {
+          Row(fields(0), fields(1).toLong, fields(2).toLong, fields(3).toLong)
+        } else {
+          Row("invalid", 0L, 0L, 0L) // Handle invalid lines
+        }
+      }
+
+
+      // Create DataFrame from rows and schema
+      val df = spark.createDataFrame(
+        spark.sparkContext.parallelize(rows.toSeq),
+        schema
+      )
+
+      val filteredDf = df.filter(!col("Chromosome").contains("_") && col("Chromosome") =!= "chrM")
+        .withColumn("Length_per_Read", col("Mapped") / col("Length"))
+
+
+      val chrXStatsRows = filteredDf.filter(col("Chromosome") === "chrX")
+        .select("Length_per_Read")
+        .collect()
+
+      if (chrXStatsRows.isEmpty) {
+        spark.stop()
+        throw new RuntimeException("Chromosome X not found in the data")
+      }
+
+      val chrXLengthPerRead = chrXStatsRows(0).getDouble(0)
+
+      val statsRow = filteredDf.agg(
+        sum("Length_per_Read").as("totalLengthPerRead"),
+        count("*").as("count")
+      ).collect()(0)
+
+      val totalLengthPerRead = statsRow.getDouble(0)
+      val rowCount = statsRow.getLong(1)
+
+      val avgLengthPerRead = (totalLengthPerRead - chrXLengthPerRead) / (rowCount - 1)
+
+      // Compare values
+      val comparison = Math.abs(chrXLengthPerRead - avgLengthPerRead)
+      val result = comparison < 0.1
+
+      result
+
+    } catch {
+      case e: Exception =>
+        spark.stop()
+        throw e
     }
+  }
 
 
   private def checkCorrectExecution(path_to_directory: String): Unit = {
