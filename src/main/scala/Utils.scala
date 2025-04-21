@@ -80,7 +80,7 @@ case class Utils():
     import org.apache.spark.storage.StorageLevel
     val random = new Random(seed)
 
-
+    println("Starting loading")
     var inputData = concatenateAlleleCountFiles(spark, tumourAlleleCountsFilePrefix)
     var normalInputData = concatenateAlleleCountFiles(spark, normalAlleleCountsFilePrefix)
     var alleleData = concatenateG1000SnpFiles(spark, g1000alleleprefix)
@@ -139,7 +139,7 @@ case class Utils():
         extractPos
       )
 
-
+    println("Filtering")
     // Filter each dataframe to only include the matched chromosome-position pairs
     val filteredAlleleData = alleleDataWithChrPos
       .join(intersection1, alleleDataWithChrPos("chrpos_allele") === intersection1("chrpos"), "inner")
@@ -219,10 +219,13 @@ case class Utils():
     // Use the function to create both columns
     val normCount1 = createCountColumn(normalDataWithIndex, "a0", "normCount1")
     val normCount2 = createCountColumn(normalDataWithIndex, "a1", "normCount2")
+    println("Normal count")
     val totalNormalDF = normCount1.join(normCount2).withColumn("total", col("normCount1") + col("normCount2"))
       .select("total")
+
     val mutCount1 = createCountColumn(mutantWithIndex, "a0", "mutCount1")
     val mutCount2 = createCountColumn(mutantWithIndex, "a1", "mutCount2")
+    println("Mutant count")
     val totalMutantDF = mutCount1.join(mutCount2).withColumn("total", col("mutCount1") + col("mutCount2"))
       .select("total")
 
