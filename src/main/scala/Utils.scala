@@ -75,303 +75,156 @@ case class Utils():
                          combinedAlleleCountsFile: String
                        ): Unit = {
 
-    val seed = System.currentTimeMillis()
-
-    import org.apache.spark.storage.StorageLevel
-    val random = new Random(seed)
-
     println("Starting loading")
     var inputData = concatenateAlleleCountFiles(spark, tumourAlleleCountsFilePrefix)
     var normalInputData = concatenateAlleleCountFiles(spark, normalAlleleCountsFilePrefix)
     var alleleData = concatenateG1000SnpFiles(spark, g1000alleleprefix)
 
 
-    // Create chromosome_position identifiers for joining
-
-    var alleleDataForJoin = alleleData
+    alleleData = alleleData
       .withColumnRenamed("CHR", "allele_CHR")
       .withColumnRenamed("position", "allele_POS")
-    alleleData.unpersist()
-    alleleData = null
-    var normalWithChr = normalInputData
+      .withColumn("chrpos_allele", concat(col("allele_CHR"), lit("_"), col("allele_POS")))
+
+    normalInputData = normalInputData
       .withColumnRenamed("#CHR", "normal_CHR")
       .withColumnRenamed("POS", "normal_POS")
-    normalInputData.unpersist()
-    normalInputData = null
+      .withColumnRenamed("Count_A", "normal_Count_A")
+      .withColumnRenamed("Count_C", "normal_Count_C")
+      .withColumnRenamed("Count_G", "normal_Count_G")
+      .withColumnRenamed("Count_T", "normal_Count_T")
+      .withColumn("chrpos_normal", concat(col("normal_CHR"), lit("_"), col("normal_POS")))
+      .drop("Good_depth")
 
-    var inputWithChr = inputData
+    inputData = inputData
       .withColumnRenamed("#CHR", "mutant_CHR")
       .withColumnRenamed("POS", "mutant_POS")
-    inputData.unpersist()
-    inputData = null
-
-    // Join the datasets on CHR and POS
-    var alleleDataWithChrPos = alleleDataForJoin
-      .withColumn("chrpos_allele", concat(col("allele_CHR"), lit("_"), col("allele_POS")))
-    alleleDataForJoin.unpersist()
-    alleleDataForJoin = null
-    var normalWithChrPos = normalWithChr
-      .withColumn("chrpos_normal", concat(col("normal_CHR"), lit("_"), col("normal_POS")))
-    normalWithChr.unpersist()
-    normalWithChr = null
-    var inputWithChrPos = inputWithChr
+      .withColumnRenamed("Count_A", "mutant_Count_A")
+      .withColumnRenamed("Count_C", "mutant_Count_C")
+      .withColumnRenamed("Count_G", "mutant_Count_G")
+      .withColumnRenamed("Count_T", "mutant_Count_T")
       .withColumn("chrpos_tumour", concat(col("mutant_CHR"), lit("_"), col("mutant_POS")))
-    inputWithChr.unpersist()
-    inputWithChr = null
-    // Collect the distinct chrpos values from each dataframe
-    val alleleChromsPos = alleleDataWithChrPos.select("chrpos_allele").distinct()
-    val normalChromsPos = normalWithChrPos.select("chrpos_normal").distinct()
-    val tumourChromsPos = inputWithChrPos.select("chrpos_tumour").distinct()
+      .drop("Good_depth")
 
-    // Find the intersection
     val extractChr = regexp_extract(col("chrpos"), "^(?:chr)?(\\d+|X)_.*", 1)
     val extractPos = regexp_extract(col("chrpos"), "^(?:chr)?(?:\\d+|X)_(\\d+)", 1).cast("int")
 
-
-    var intersection1 = alleleChromsPos.join(normalChromsPos,
-        alleleChromsPos("chrpos_allele") === normalChromsPos("chrpos_normal"),
+    var joinedDf = alleleData.join(normalInputData, alleleData("chrpos_allele") === normalInputData("chrpos_normal"),
         "inner")
-      .select("chrpos_allele")
-      .withColumnRenamed("chrpos_allele", "chrpos")
+      .join(inputData, alleleData("chrpos_allele") === inputData("chrpos_tumour"),
+        "inner")
+
+    joinedDf = joinedDf.drop("chrpos_allele")
+      .drop("chrpos_normal")
+      .drop("allele_POS")
+      .drop("allele_CHR")
+      .drop("normal_CHR")
+      .drop("normal_POS")
+      .withColumnRenamed("chrpos_tumour", "chrpos")
       .orderBy(
-        // Handle X chromosome specially (X comes after numbers)
         when(extractChr === "X", 100).otherwise(extractChr.cast("int")),
         extractPos
       )
 
-    println("Filtering")
-    // Filter each dataframe to only include the matched chromosome-position pairs
-    val filteredAlleleData = alleleDataWithChrPos
-      .join(intersection1, alleleDataWithChrPos("chrpos_allele") === intersection1("chrpos"), "inner")
-      .orderBy(
-        // Handle X chromosome specially (X comes after numbers)
-        when(extractChr === "X", 100).otherwise(extractChr.cast("int")),
-        extractPos
-      )
-      .drop("chrpos", "chrpos_allele")
-    alleleDataWithChrPos.unpersist()
-    alleleDataWithChrPos = null
 
-    val filteredNormalData = normalWithChrPos
-      .join(intersection1, normalWithChrPos("chrpos_normal") === intersection1("chrpos"), "inner")
-      .orderBy(
-        // Handle X chromosome specially (X comes after numbers)
-        when(extractChr === "X", 100).otherwise(extractChr.cast("int")),
-        extractPos
-      )
-      .drop("chrpos", "chrpos_normal")
-    normalWithChrPos.unpersist()
-    normalWithChrPos = null
-
-    val filteredInputData = inputWithChrPos
-      .join(intersection1, inputWithChrPos("chrpos_tumour") === intersection1("chrpos"), "inner")
-      .orderBy(
-        // Handle X chromosome specially (X comes after numbers)
-        when(extractChr === "X", 100).otherwise(extractChr.cast("int")),
-        extractPos
-      )
-      .drop("chrpos", "chrpos_tumour")
-
-    inputWithChrPos.unpersist()
-    inputWithChrPos = null
-    intersection1.unpersist()
-    intersection1 = null
-
-    val normalData = filteredNormalData.select(
-      filteredNormalData.columns.slice(2, 6).map(col): _*
-    )
-    val mutantData = filteredInputData.select(
-      filteredInputData.columns.slice(2, 6).map(col): _*
-    )
-
-
-    import org.apache.spark.sql.expressions.Window
-    import org.apache.spark.sql.functions.*
-    import org.apache.spark.sql.types.IntegerType
-    import spark.implicits.*
-
-    // Extract both allele columns separately
-    val a0Indices = filteredAlleleData.select("a0").as[Int].collect()
-    val a1Indices = filteredAlleleData.select("a1").as[Int].collect()
-
-    // Create a single UDF that takes the allele type as a parameter
-    val selectAllele = udf((rowIdx: Int, alleleType: String) => {
-      if (alleleType == "a0") a0Indices(rowIdx) else a1Indices(rowIdx)
+    val selectAlleleCount = udf((alleleIdx: Int, countA: Int, countC: Int, countG: Int, countT: Int) => {
+      alleleIdx match {
+        case 1 => countA
+        case 2 => countC
+        case 3 => countG
+        case 4 => countT
+      }
     }, IntegerType)
 
-    // Add row index to normal data
-    val normalDataWithIndex = normalData.withColumn("row_idx",
-      row_number().over(Window.orderBy(monotonically_increasing_id())) - 1)
-    val mutantWithIndex = normalData.withColumn("row_idx",
-      row_number().over(Window.orderBy(monotonically_increasing_id())) - 1)
+    joinedDf = joinedDf
+      .withColumn("normCount1",
+        selectAlleleCount(
+          col("a0"),
+          col("normal_Count_A"),
+          col("normal_Count_C"),
+          col("normal_Count_G"),
+          col("normal_Count_T")
+        )
+      )
+      .withColumn("normCount2",
+        selectAlleleCount(
+          col("a1"),
+          col("normal_Count_A"),
+          col("normal_Count_C"),
+          col("normal_Count_G"),
+          col("normal_Count_T")
+        )
+      )
+      .withColumn("totalNormal", col("normCount1") + col("normCount2"))
+      .withColumn("mutCount1",
+        selectAlleleCount(
+          col("a0"),
+          col("mutant_Count_A"),
+          col("mutant_Count_C"),
+          col("mutant_Count_G"),
+          col("mutant_Count_T")
+        )
+      )
+      .withColumn("mutCount2",
+        selectAlleleCount(
+          col("a1"),
+          col("mutant_Count_A"),
+          col("mutant_Count_C"),
+          col("mutant_Count_G"),
+          col("mutant_Count_T")
+        )
+      )
+      .withColumn("totalmutant", col("mutCount1") + col("mutCount2"))
 
-    // Create a function for the count selection logic
-    def createCountColumn(data: DataFrame, alleleType: String, outputColName: String) = {
-      data.withColumn(
-        outputColName,
-        when(selectAllele(col("row_idx"), lit(alleleType)) === 1, col("Count_A"))
-          .when(selectAllele(col("row_idx"), lit(alleleType)) === 2, col("Count_C"))
-          .when(selectAllele(col("row_idx"), lit(alleleType)) === 3, col("Count_G"))
-          .when(selectAllele(col("row_idx"), lit(alleleType)) === 4, col("Count_T"))
-      ).select(outputColName)
+
+    joinedDf = joinedDf.drop("chrpos")
+      .drop("normal_Count_A", "normal_Count_C", "normal_Count_G", "normal_Count_T")
+      .drop("mutant_Count_A", "mutant_Count_C", "mutant_Count_G", "mutant_Count_T")
+      .drop("chrpos")
+      .drop("a0", "a1")
+
+
+    joinedDf = if (minCounts > 0) {
+      println(s"minCount=$minCounts")
+      joinedDf.filter(
+        col("totalNormal") >= minCounts && col("totalMutant") >= 1)
+    } else {
+      joinedDf
     }
 
-    // Use the function to create both columns
-    val normCount1 = createCountColumn(normalDataWithIndex, "a0", "normCount1")
-    val normCount2 = createCountColumn(normalDataWithIndex, "a1", "normCount2")
-    println("Normal count")
-    val totalNormalDF = normCount1.join(normCount2).withColumn("total", col("normCount1") + col("normCount2"))
-      .select("total")
 
-    val mutCount1 = createCountColumn(mutantWithIndex, "a0", "mutCount1")
-    val mutCount2 = createCountColumn(mutantWithIndex, "a1", "mutCount2")
-    println("Mutant count")
-    val totalMutantDF = mutCount1.join(mutCount2).withColumn("total", col("mutCount1") + col("mutCount2"))
-      .select("total")
+    joinedDf = joinedDf.withColumn("selector", (rand() * 2).cast("int"))
 
-    saveSingleFile(totalNormalDF, "totalNormal")
-    saveSingleFile(totalMutantDF, "totalMutant")
-    println("Si v pici brasko")
-
-    System.exit(0)
+    val log2UDF = udf((value: Double) => {
+      scala.math.log(value) / scala.math.log(2.0)
+    }, DoubleType)
 
 
-    import org.apache.spark.sql.functions.{lit, when}
+    joinedDf = joinedDf.withColumn("normalBAF",
+        when(col("selector") === 0, col("normCount1") / col("totalNormal"))
+          .otherwise(col("normCount2") / col("totalNormal"))
+      )
 
+      .withColumn("mutantBAF",
+        when(col("selector") === 0, col("mutCount1") / col("totalMutant"))
+          .otherwise(col("mutCount2") / col("totalMutant"))
+      )
 
-    // Extract allele-specific counts and calculate BAF and LogR
+      .withColumn("normalLogR", lit(0).cast("int"))
+      .withColumn("mutantLogR", col("totalMutant") / col("totalNormal"))
 
-    // todo issue bude pravdepodobne tu ako sa handluje getAlleleCount
-    //    val processedData = joinedData
-    //      // Add random selector for allele swapping
-    //      .withColumn("selector", when(rand(seed) > 0.5, 1).otherwise(0))
-    //
-    //      // Extract counts for normal data
-    //      .withColumn("normCount1", getAlleleCount(
-    //        col("a0"),
-    //        col("normal_Count_A"), col("normal_Count_C"),
-    //        col("normal_Count_G"), col("normal_Count_T")
-    //      ))
-    //      .withColumn("normCount2", getAlleleCount(
-    //        col("a1"),
-    //        col("normal_Count_A"), col("normal_Count_C"),
-    //        col("normal_Count_G"), col("normal_Count_T")
-    //      ))
-    //
-    //      // Extract counts for mutant data (from inputData)
-    //      .withColumn("mutCount1", getAlleleCount(
-    //        col("a0"),
-    //        col("mutant_Count_A"), col("mutant_Count_C"),
-    //        col("mutant_Count_G"), col("mutant_Count_T")
-    //      ))
-    //      .withColumn("mutCount2", getAlleleCount(
-    //        col("a1"),
-    //        col("mutant_Count_A"), col("mutant_Count_C"),
-    //        col("mutant_Count_G"), col("mutant_Count_T")
-    //      ))
-    //
-    //      // Calculate totals
-    //      .withColumn("totalNormal", col("normCount1") + col("normCount2"))
-    //      .withColumn("totalMutant", col("mutCount1") + col("mutCount2"))
-    System.exit(0)
-    //    val filteredByCount = if (minCounts > 0) {
-    //      println(s"minCount=$minCounts")
-    //      processedData.filter(col("totalNormal") >= minCounts && col("totalMutant") >= 1)
-    //    } else {
-    //      processedData
-    //    }
-    //
-    //    // Calculate BAF and LogR
-    //    val finalData = filteredByCount
-    //      // Calculate BAF based on selector
-    //      .withColumn("normalBAF",
-    //        when(col("selector") === 0, col("normCount1") / col("totalNormal"))
-    //          .otherwise(col("normCount2") / col("totalNormal"))
-    //      )
-    //      .withColumn("mutantBAF",
-    //        when(col("selector") === 0, col("mutCount1") / col("totalMutant"))
-    //          .otherwise(col("mutCount2") / col("totalMutant"))
-    //      )
-    //      // Calculate LogR values
-    //      .withColumn("normalLogR", lit(0))
-    //      .withColumn("rawMutantLogR", col("totalMutant") / col("totalNormal"))
-    //
-    //    // Calculate mean of mutantLogR for normalization
-    //    val mutantLogRMean = finalData.agg(mean("rawMutantLogR")).first().getDouble(0)
-    //
-    //    // Create final datasets for output
-    //
-    //    val germlineBAF = finalData.select(
-    //      col("allele_CHR").as("Chromosome"),
-    //      col("allele_POS").as("Position"),
-    //      col("normalBAF").as(tumourName)
-    //    )
-    //
-    //    val germlineLogR = finalData.select(
-    //      col("allele_CHR").as("Chromosome"),
-    //      col("allele_POS").as("Position"),
-    //      col("normalLogR").as(tumourName)
-    //    )
-    //
-    //    val tumorBAF = finalData.select(
-    //      col("allele_CHR").as("Chromosome"),
-    //      col("allele_POS").as("Position"),
-    //      col("mutantBAF").as(tumourName)
-    //    )
-    //
-    //    val tumorLogR = finalData.select(
-    //      col("allele_CHR").as("Chromosome"),
-    //      col("allele_POS").as("Position"),
-    //      log2(col("rawMutantLogR") / lit(mutantLogRMean)).as(tumourName)
-    //    )
-    //
-    //    val alleleCounts = finalData.select(
-    //      col("allele_CHR").as("Chromosome"),
-    //      col("allele_POS").as("Position"),
-    //      col("mutCount1"), col("mutCount2"), col("normCount1"), col("normCount2")
-    //    )
-    //
-    //
-    //    saveSingleFile(germlineBAF, BAFnormalFile)
-    //    // Save data to disk
-    //    //    germlineBAF.coalesce(1).write
-    //    //      .option("header", "true")
-    //    //      .option("delimiter", "\t")
-    //    //      .mode("overwrite")
-    //    //      .format("csv")
-    //    //      .save(BAFnormalFile)
-    //
-    //    //    tumorBAF.coalesce(1).write
-    //    //      .option("header", "true")
-    //    //      .option("delimiter", "\t")
-    //    //      .mode("overwrite")
-    //    //      .format("csv")
-    //    //      .save(BAFmutantFile)
-    //    saveSingleFile(tumorBAF, BAFmutantFile)
-    //
-    //    //    germlineLogR.coalesce(1).write
-    //    //      .option("header", "true")
-    //    //      .option("delimiter", "\t")
-    //    //      .mode("overwrite")
-    //    //      .format("csv")
-    //    //      .save(logRnormalFile)
-    //    saveSingleFile(germlineLogR, logRnormalFile)
-    //
-    //    //    tumorLogR.coalesce(1).write
-    //    //      .option("header", "true")
-    //    //      .option("delimiter", "\t")
-    //    //      .mode("overwrite")
-    //    //      .format("csv")
-    //    //      .save(logRmutantFile)
-    //
-    //    saveSingleFile(tumorLogR, logRmutantFile)
-    //
-    //    //    alleleCounts.coalesce(1).write
-    //    //      .option("header", "true")
-    //    //      .option("delimiter", "\t")
-    //    //      .mode("overwrite").format("csv").save(combinedAlleleCountsFile)
-    //
-    //    saveSingleFile(alleleCounts, combinedAlleleCountsFile)
+    val meanMutantLogR = joinedDf.agg(avg("mutantLogR")).first().getDouble(0)
+
+    joinedDf = joinedDf.withColumn("log2mutantLogR", log2UDF(col("mutantLogR") / lit(meanMutantLogR)))
+
+    joinedDf = joinedDf.withColumnRenamed("mutant_CHR", "Chromosome")
+      .withColumnRenamed("mutant_POS", "Position")
+
+    saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalBAF").as(tumourName)), BAFnormalFile)
+    saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutantBAF").as(tumourName)), BAFmutantFile)
+    saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalLogR").as(tumourName)), logRnormalFile)
+    saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("log2mutantLogR").as(tumourName)), logRmutantFile)
+    saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutCount1").as("mutCountT1"), col("mutCount2").as("mutCountT2"), col("normCount1").as("mutCountN1"), col("normCount2").as("mutCountN2")), combinedAlleleCountsFile)
 
 
   }
@@ -567,102 +420,103 @@ case class Utils():
 
 
   def setChromosomesNames(bamFile: String): Unit = {
-    val command = Seq(
-      "samtools",
-      "view", "-H", bamFile
-    ).mkString(" ")
-    println(command)
+        val command = Seq(
+          "samtools",
+          "view", "-H", bamFile
+        ).mkString(" ")
+        println(command)
 
 
-    val chromosomePrefix = command.!!
+        val chromosomePrefix = command.!!
 
-    if (chromosomePrefix.contains("chr")) {
-      chromosomeNames = ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
+        if (chromosomePrefix.contains("chr")) {
+          chromosomeNames = ((1 to 22).map(n => s"chr$n") :+ "chrX").toList.par
 
-    } else {
-      chromosomeNames = ((1 to 22) :+ "X").toList.par
-    }
-
-  }
-
-  def isMale(sampleName: String): Boolean = {
-    val spark = SparkSession.builder()
-      .appName("Battenberg")
-      .master("local[*]")
-      .getOrCreate()
-
-    try {
-
-      val samtoolsCmd = Seq("samtools", "idxstats", sampleName)
-      val sortCmd = Seq("sort")
-      val fullCommand = (samtoolsCmd #| sortCmd)
-      val output = Try(fullCommand.!!).getOrElse {
-        spark.stop()
-        throw new RuntimeException(s"Failed to execute command: $fullCommand")
-      }
-
-
-      val schema = StructType(Array(
-        StructField("Chromosome", StringType, nullable = false),
-        StructField("Length", LongType, nullable = false),
-        StructField("Mapped", LongType, nullable = false),
-        StructField("Unmapped", LongType, nullable = false)
-      ))
-
-      // Convert output to Row objects
-      val rows = output.trim.split("\n").map { line =>
-        val fields = line.split("\t")
-        if (fields.length == 4) {
-          Row(fields(0), fields(1).toLong, fields(2).toLong, fields(3).toLong)
         } else {
-          Row("invalid", 0L, 0L, 0L) // Handle invalid lines
+          chromosomeNames = ((1 to 22) :+ "X").toList.par
         }
-      }
 
 
-      // Create DataFrame from rows and schema
-      val df = spark.createDataFrame(
-        spark.sparkContext.parallelize(rows.toSeq),
-        schema
-      )
-
-      val filteredDf = df.filter(!col("Chromosome").contains("_") && col("Chromosome") =!= "chrM")
-        .withColumn("Length_per_Read", col("Mapped") / col("Length"))
-
-
-      val chrXStatsRows = filteredDf.filter(col("Chromosome") === "chrX")
-        .select("Length_per_Read")
-        .collect()
-
-      if (chrXStatsRows.isEmpty) {
-        spark.stop()
-        throw new RuntimeException("Chromosome X not found in the data")
-      }
-
-      val chrXLengthPerRead = chrXStatsRows(0).getDouble(0)
-
-      val statsRow = filteredDf.agg(
-        sum("Length_per_Read").as("totalLengthPerRead"),
-        count("*").as("count")
-      ).collect()(0)
-
-      val totalLengthPerRead = statsRow.getDouble(0)
-      val rowCount = statsRow.getLong(1)
-
-      val avgLengthPerRead = (totalLengthPerRead - chrXLengthPerRead) / (rowCount - 1)
-
-      // Compare values
-      val comparison = Math.abs(chrXLengthPerRead - avgLengthPerRead)
-      val result = comparison < 0.1
-
-      result
-
-    } catch {
-      case e: Exception =>
-        spark.stop()
-        throw e
-    }
   }
+
+    def isMale(sampleName: String): Boolean = {
+      val spark = SparkSession.builder()
+        .appName("Battenberg")
+        .master("local[*]")
+        .getOrCreate()
+
+      try {
+
+        val samtoolsCmd = Seq("samtools", "idxstats", sampleName)
+        val sortCmd = Seq("sort")
+        val fullCommand = (samtoolsCmd #| sortCmd)
+        val output = Try(fullCommand.!!).getOrElse {
+          spark.stop()
+          throw new RuntimeException(s"Failed to execute command: $fullCommand")
+        }
+
+
+        val schema = StructType(Array(
+          StructField("Chromosome", StringType, nullable = false),
+          StructField("Length", LongType, nullable = false),
+          StructField("Mapped", LongType, nullable = false),
+          StructField("Unmapped", LongType, nullable = false)
+        ))
+
+        // Convert output to Row objects
+        val rows = output.trim.split("\n").map { line =>
+          val fields = line.split("\t")
+          if (fields.length == 4) {
+            Row(fields(0), fields(1).toLong, fields(2).toLong, fields(3).toLong)
+          } else {
+            Row("invalid", 0L, 0L, 0L) // Handle invalid lines
+          }
+        }
+
+
+        // Create DataFrame from rows and schema
+        val df = spark.createDataFrame(
+          spark.sparkContext.parallelize(rows.toSeq),
+          schema
+        )
+
+        val filteredDf = df.filter(!col("Chromosome").contains("_") && col("Chromosome") =!= "chrM")
+          .withColumn("Length_per_Read", col("Mapped") / col("Length"))
+
+
+        val chrXStatsRows = filteredDf.filter(col("Chromosome") === "chrX")
+          .select("Length_per_Read")
+          .collect()
+
+        if (chrXStatsRows.isEmpty) {
+          spark.stop()
+          throw new RuntimeException("Chromosome X not found in the data")
+        }
+
+        val chrXLengthPerRead = chrXStatsRows(0).getDouble(0)
+
+        val statsRow = filteredDf.agg(
+          sum("Length_per_Read").as("totalLengthPerRead"),
+          count("*").as("count")
+        ).collect()(0)
+
+        val totalLengthPerRead = statsRow.getDouble(0)
+        val rowCount = statsRow.getLong(1)
+
+        val avgLengthPerRead = (totalLengthPerRead - chrXLengthPerRead) / (rowCount - 1)
+
+          // Compare values
+        val comparison = Math.abs(chrXLengthPerRead - avgLengthPerRead)
+        val result = comparison < 0.1
+
+        result
+
+      } catch {
+        case e: Exception =>
+          spark.stop()
+          throw e
+      }
+    }
 
 
   private def checkCorrectExecution(path_to_directory: String): Unit = {
