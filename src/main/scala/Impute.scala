@@ -21,6 +21,54 @@ case class Impute():
     impute_info
   }
 
+
+  private def writeBeagleAsImpute(spark: SparkSession, beagle_file: String, output_file: String, utils: Utils): Unit = {
+    var beagle_output = spark.read.option("header", "false").option("comment", "#").option("delimiter", "\t").csv(beagle_file)
+    import org.apache.spark.sql.types._
+    import org.apache.spark.sql.functions._
+
+    val customSchema = StructType(Array(
+      StructField("CHROM", StringType, true),
+      StructField("POS", IntegerType, true),
+      StructField("ID", StringType, true),
+      StructField("REF", StringType, true),
+      StructField("ALT", StringType, true),
+      StructField("QUAL", DoubleType, true),
+      StructField("FILTER", StringType, true),
+      StructField("INFO", StringType, true),
+      StructField("FORMAT", StringType, true),
+      StructField("SAMP0001", StringType, true)
+    ))
+    beagle_output = beagle_output.toDF(customSchema.fieldNames: _*)
+      .select(
+        col("CHROM"),
+        col("POS").cast(IntegerType),
+        col("ID"),
+        col("REF"),
+        col("ALT"),
+        col("QUAL").cast(DoubleType),
+        col("FILTER"),
+        col("INFO"),
+        col("FORMAT"),
+        col("SAMP0001")
+      )
+
+    beagle_output = beagle_output.withColumn("genotype_split", split(col("SAMP0001"), "|"))
+      .withColumn("allele1", col("genotype_split").getItem(0).cast("integer"))
+      .withColumn("allele2", col("genotype_split").getItem(2).cast("integer"))
+      .drop("genotype_split")
+
+    beagle_output = beagle_output.withColumn("row_num", monotonically_increasing_id() + 1)
+
+    beagle_output = beagle_output
+      .withColumn("snp_index", concat(lit("snp_index"), col("row_num").cast("string")))
+      .withColumn("rs_index", concat(lit("rs_index"), col("row_num").cast("string")))
+
+    beagle_output = beagle_output.select(col("snp_index"), col("rs_index"), col("POS"), col("REF"), col("ALT"), col("allele1"), col("allele2"))
+
+    utils.saveSingleFile(beagle_output, output_file, false)
+  }
+
   private def generateImputeInput(spark: SparkSession, chromosome: String, utils: Utils): String = {
 
     val tumourAlleleCountsFile = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_$chromosome.txt"
@@ -175,6 +223,8 @@ case class Impute():
       s"overlap=$beagleoverlap",
       "impute=false").mkString(" ")
 
+    println(cmd)
+
     import scala.sys.process._
 
     cmd.!
@@ -183,17 +233,19 @@ case class Impute():
   def runHaplotyping(spark: SparkSession, chromosome: String, utils: Utils): Unit = {
 
 
-//        val vcfbeagle_path = generateImputeInput(spark, chromosome, utils)
-    val vcfbeagle_path = s"${utils.impute_directory}/${utils.tumourName}_beagle5_input_$chromosome.txt"
+    //        val vcfbeagle_path = generateImputeInput(spark, chromosome, utils)
+    val vcfbeagle_path = s"${utils.impute_directory}/${utils.tumourName}_beagle5_input_chr${chromosome.stripPrefix("chr")}.txt"
     val outbeagle_path = s"${utils.impute_directory}/${utils.tumourName}_beagle5_output_chr${chromosome.stripPrefix("chr")}.txt"
 
-    //    beagleref = gsub("CHROMNAME", chrom, beagleref.template)
-    //    beagleplink = gsub("CHROMNAME", chrom, beagleplink.template)
 
-    runBeagle5(vcf_path = vcfbeagle_path, utils = utils, output_path = outbeagle_path, chromosome = chromosome)
+    //    runBeagle5(vcf_path = vcfbeagle_path, utils = utils, output_path = outbeagle_path, chromosome = chromosome)
 
-    //val outfile = s"${utils.impute_directory}/${utils.tumourName}_impute_output_chr${chromosome.stripPrefix("chr")}_allHaplotypeInfo.txt"
-    //    val vcfout = s"$outbeagle_path.vcf.gz"
+
+    val outfile = s"${utils.impute_directory}/${utils.tumourName}_impute_output_chr${chromosome.stripPrefix("chr")}_allHaplotypeInfo.txt"
+
+    val vcfout = s"$outbeagle_path.vcf.gz"
+
+    writeBeagleAsImpute(spark, vcfout, outfile, utils)
 
 
   }
