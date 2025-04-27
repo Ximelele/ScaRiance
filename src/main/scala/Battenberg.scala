@@ -6,15 +6,24 @@ case class Battenberg(control_file: String, tumour_file: String):
 
   private val utils = Utils()
   private val prepare_Wgs = PrepareWgs()
-  private var male: Boolean = true
+  private val impute = Impute()
 
   def run(): Unit = {
     this.setDefaultValues()
 
 
     //    this.male = this.utils.isMale(tumour_file)
-    prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
-    println("Macka Macka")
+    val spark = SparkSession.builder()
+      .appName("Battenberg")
+      .master("local[*]")
+      .getOrCreate()
+    //    prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
+    //    println("Macka Macka")
+    //
+        this.utils.chromosomeNames.foreach(chrom => {
+          //      println(chrom)
+          impute.runHaplotyping(spark, chrom.toString, this.utils)
+        })
 
 
   }
@@ -22,8 +31,17 @@ case class Battenberg(control_file: String, tumour_file: String):
   private def setDefaultValues(): Unit = {
     this.utils.tumourName = tumour_file.split("/").last
     this.utils.controlName = control_file.split("/").last
+    this.utils.is_male = this.utils.isMale(tumour_file)
     this.utils.setChromosomesNames(control_file)
+
+    if (this.utils.chromosomeNames(0).toString.contains("chr")) {
+      this.utils.referenciesFile.setPostfixDirectory()
+    } else {
+      this.utils.referenciesFile.setPostFixFile()
+    }
+
     this.utils.createPatientDirectory(this.utils.controlName)
+
   }
 
 
