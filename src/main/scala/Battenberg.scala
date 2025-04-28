@@ -7,6 +7,7 @@ case class Battenberg(control_file: String, tumour_file: String):
   private val utils = Utils()
   private val prepare_Wgs = PrepareWgs()
   private val impute = Impute()
+  private val haplotype = Haplotype()
 
   def run(): Unit = {
     this.setDefaultValues()
@@ -20,10 +21,11 @@ case class Battenberg(control_file: String, tumour_file: String):
     //    prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
     //    println("Macka Macka")
     //
-        this.utils.chromosomeNames.foreach(chrom => {
-          //      println(chrom)
-          impute.runHaplotyping(spark, chrom.toString, this.utils)
-        })
+    this.utils.chromosomeNames.foreach(chrom => {
+      println(chrom)
+      //impute.runHaplotyping(spark, chrom, this.utils)
+      haplotype.getChromosomeBafs(spark = spark, SNP_file = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_$chrom.txt", haplotype_File = s"${utils.impute_directory}/${utils.tumourName}_impute_output_${chrom}_allHaplotypeInfo.txt", utils = utils, output_file = s"${utils.impute_directory}/${utils.tumourName}_impute_output_${chrom}_heterozygousMutBAFs_haplotyped.txt", minCounts = 10)
+    })
 
 
   }
