@@ -430,7 +430,7 @@ case class Utils():
         }
       }
     }
-    resultDf = resultDf.orderBy(col("Chromosome"))
+    resultDf = resultDf.orderBy(col("Chromosome"),col("Position"))
     saveSingleFile(resultDf, s"${inputStart}heterozygousMutBAFs_haplotyped.txt")
   }
 
