@@ -118,6 +118,29 @@ case class Battenberg(control_file: String, tumour_file: String):
       println(s"R script failed with exit code $exitCode")
     }
 
+
+    val callChrXsubclones = Seq(
+      "Rscript",
+      "-e",
+      s"""
+                  source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
+
+                  callChrXsubclones(
+                    sample.name = "${utils.working_directory}/${utils.tumourName}",
+                    chr_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
+
+                  )
+                  """
+    )
+
+    exitCode = callChrXsubclones.!
+
+    if (exitCode == 0) {
+      println("R script executed successfully")
+    } else {
+      println(s"R script failed with exit code $exitCode")
+    }
+
   }
 
   private def setDefaultValues(): Unit = {

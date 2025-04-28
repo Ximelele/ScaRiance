@@ -998,11 +998,12 @@ make_posthoc_plots = function(samplename, logr_file, bafsegmented_file, logrsegm
 #' @author Naser Ansari-Pour (WIMM, Oxford)
 #' @export
 
-callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=TRUE,prior_breakpoints_file=NULL,chrom_names){
+callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,AR=TRUE,prior_breakpoints_file=NULL,chrom_names){
 
   print(tumourname)
 
-  PCFinput=data.frame(read_table_generic(paste0(tumourname,"_mutantLogR_gcCorrected.tab")),stringsAsFactors=F)
+#   PCFinput=data.frame(read_table_generic(paste0(tumourname,"_mutantLogR_gcCorrected.tab")),stringsAsFactors=F)
+  PCFinput=data.frame(read_table_generic(paste0(tumourname,"_mutantLogR.tab")),stringsAsFactors=F)
   ChrNotation=unique(PCFinput[which(!is.na(match(PCFinput$Chromosome,c("X","chrX")))),]$Chromosome) # find the chromosome notation
   PCFinput=PCFinput[which(PCFinput$Chromosome==ChrNotation & PCFinput$Position>2.6e6 & PCFinput$Position<156e6),] # get nonPAR
   colnames(PCFinput)[3]=tumourname
@@ -1024,13 +1025,10 @@ callChrXsubclones = function(tumourname,X_gamma=1000,X_kmin=100,genomebuild,AR=T
   write.table(PCF,paste0(tumourname,"_PCF_gamma_",X_gamma,"_chrX.txt"),col.names=T,row.names=F,quote=F,sep="\t")
   print("PCF segmentation done")
 
-  if (genomebuild=="hg19"){
-    x_centromere=c(58632012,61632012) # hg19
-    ar=data.frame(startpos=66763874,endpos=66950461)
-  } else {
-    x_centromere=c(58605580,62412542) #hg38
-    ar=data.frame(startpos=67544021,endpos=67730619)
-  }
+
+  x_centromere=c(58605580,62412542) #hg38
+  ar=data.frame(startpos=67544021,endpos=67730619)
+
 
   # INPUT for copy number inference
   SAMPLEsegs=data.frame(PCF,stringsAsFactors=F)
