@@ -126,8 +126,8 @@ case class Battenberg(control_file: String, tumour_file: String):
                   source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
 
                   callChrXsubclones(
-                    sample.name = "${utils.working_directory}/${utils.tumourName}",
-                    chr_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
+                    tumourname = "${utils.working_directory}/${utils.tumourName}",
+                    chrom_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
 
                   )
                   """
