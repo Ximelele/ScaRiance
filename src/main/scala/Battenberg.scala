@@ -104,7 +104,7 @@ case class Battenberg(control_file: String, tumour_file: String):
                 output.file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
                 output.gw.figures.prefix=paste(samplename[sampleidx],"_BattenbergProfile", sep=""),
                 masking_output_file=paste(samplename[sampleidx], "_segment_masking_details.txt", sep=""),
-                chr_names= c(${utils.chromosomeNames.toList.mkString(",")})
+                chr_names= ${utils.chromosomeNames.toArray.mkString(",")}
 
               )
               """
