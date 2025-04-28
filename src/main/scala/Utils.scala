@@ -432,8 +432,8 @@ case class Utils():
     }
     val extractChr = regexp_extract(col("Chromosome"), "^chr?(\\d+|X)", 1)
 
-    resultDf = resultDf.orderBy(when(extractChr === "X", 100).otherwise(extractChr.cast("int"), col("Position").cast("int"))
-      saveSingleFile(resultDf, s"${inputStart}heterozygousMutBAFs_haplotyped.txt")
+    resultDf = resultDf.orderBy(when(extractChr === "X", 100).otherwise(extractChr.cast("int"), col("Position").cast("int")))
+    saveSingleFile(resultDf, s"${inputStart}heterozygousMutBAFs_haplotyped.txt")
   }
 
 
