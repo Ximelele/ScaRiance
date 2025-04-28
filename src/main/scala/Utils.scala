@@ -76,7 +76,7 @@ case class Utils():
                          combinedAlleleCountsFile: String
                        ): Unit = {
 
-    println("Starting loading")
+
     var inputData = concatenateAlleleCountFiles(spark, tumourAlleleCountsFilePrefix)
     var normalInputData = concatenateAlleleCountFiles(spark, normalAlleleCountsFilePrefix)
     var alleleData = concatenateG1000SnpFiles(spark, referenciesFile.g1000alleleprefix)
@@ -430,8 +430,10 @@ case class Utils():
         }
       }
     }
-    resultDf = resultDf.orderBy(col("Chromosome"),col("Position"))
-    saveSingleFile(resultDf, s"${inputStart}heterozygousMutBAFs_haplotyped.txt")
+    val extractChr = regexp_extract(col("Chromosome"), "^chr?(\\d+|X)", 1)
+
+    resultDf = resultDf.orderBy(when(extractChr === "X", 100).otherwise(extractChr.cast("int"), col("Position").cast("int"))
+      saveSingleFile(resultDf, s"${inputStart}heterozygousMutBAFs_haplotyped.txt")
   }
 
 
