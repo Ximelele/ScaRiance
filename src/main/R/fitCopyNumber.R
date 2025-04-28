@@ -60,7 +60,7 @@ read_logr = function(filename, header=T) {
 #' @param analysis A String representing the type of analysis to be run, this determines whether the distance figure is produced (Default paired)
 #' @author dw9, sd11
 #' @export
-fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmented, inputfile.baf, inputfile.logr, dist_choice=0, ascat_dist_choice = 1, min.ploidy=1.6, max.ploidy=8.1, min.rho=0.1,  max.rho=1.0, min.goodness=30, uninformative_BAF_threshold=0.51, gamma_param=1, use_preset_rho_psi=F, preset_rho=NA, preset_psi=NA, read_depth=30, log_segment_file) {
+fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmented, inputfile.baf, inputfile.logr, dist_choice=0, ascat_dist_choice = 1, min.ploidy=1.6, max.ploidy=8.1, min.rho=0.1,  max.rho=1.0, min.goodness=30, uninformative_BAF_threshold=0.51, gamma_param=1, use_preset_rho_psi=F, preset_rho=NA, preset_psi=NA, read_depth=30, log_segment_file,ploting_prefix) {
 
   assert.file.exists(inputfile.baf.segmented)
   assert.file.exists(inputfile.baf)
@@ -193,17 +193,17 @@ fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmente
   }
 
 
-  distance.outfile=paste(outputfile.prefix, "distance.png", sep="", collapse="") # kjd 20-2-2014
-  copynumberprofile.outfile=paste(outputfile.prefix, "copynumberprofile.png", sep="", collapse="") # kjd 20-2-2014
-  nonroundedprofile.outfile=paste(outputfile.prefix, "nonroundedprofile.png", sep="", collapse="") # kjd 20-2-2014
+  distance.outfile=paste(ploting_prefix, "distance.png", sep="", collapse="") # kjd 20-2-2014
+  copynumberprofile.outfile=paste(ploting_prefix, "copynumberprofile.png", sep="", collapse="") # kjd 20-2-2014
+  nonroundedprofile.outfile=paste(ploting_prefix, "nonroundedprofile.png", sep="", collapse="") # kjd 20-2-2014
   cnaStatusFile = paste(outputfile.prefix, "copynumber_solution_status.txt", sep="", collapse="")
 
   ascat_optimum_pair = runASCAT(logR, 1-BAF.data[,3], segLogR, segBAF, chr.segs, ascat_dist_choice,distance.outfile, copynumberprofile.outfile, nonroundedprofile.outfile, cnaStatusFile=cnaStatusFile, gamma=gamma_param, allow100percent=T, reliabilityFile=NA, min.ploidy=min.ploidy, max.ploidy=max.ploidy, min.rho=min.rho, max.rho=max.rho, min.goodness, chr.names=chr.names, analysis="paired") # kjd 4-2-2014
 
 
-  distance.outfile=paste(outputfile.prefix,"second_distance.png",sep="",collapse="") # kjd 20-2-2014
-  copynumberprofile.outfile=paste(outputfile.prefix,"second_copynumberprofile.png",sep="",collapse="") # kjd 20-2-2014
-  nonroundedprofile.outfile=paste(outputfile.prefix,"second_nonroundedprofile.png",sep="",collapse="") # kjd 20-2-2014
+  distance.outfile=paste(ploting_prefix,"second_distance.png",sep="",collapse="") # kjd 20-2-2014
+  copynumberprofile.outfile=paste(ploting_prefix,"second_copynumberprofile.png",sep="",collapse="") # kjd 20-2-2014
+  nonroundedprofile.outfile=paste(ploting_prefix,"second_nonroundedprofile.png",sep="",collapse="") # kjd 20-2-2014
 
   # All is set up, now run ASCAT to obtain a clonal copynumber profile
   out = run_clonal_ASCAT( logR, 1-BAF.data[,3], segLogR, segBAF, chr.segs, matched.segmented.BAF.data, ascat_optimum_pair, dist_choice, distance.outfile, copynumberprofile.outfile, nonroundedprofile.outfile, gamma_param=gamma_param, read_depth, uninformative_BAF_threshold, allow100percent=T, reliabilityFile=NA,  psi_min_initial=min.ploidy, psi_max_initial=max.ploidy, rho_min_initial=min.rho, rho_max_initial=max.rho, chr.names=chr.names) # kjd 21-2-2014
@@ -324,46 +324,46 @@ callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.fil
   # Make a plot per chromosome
   ################################################################################################
   # Collapse the BAFsegmented into breakpoints to be used in plotting
-  segment_breakpoints = collapse_bafsegmented_to_segments(BAFvals)
-  if (!is.null(prior_breakpoints_file) & !ifelse(is.null(prior_breakpoints_file), TRUE, prior_breakpoints_file=="NA") & !ifelse(is.null(prior_breakpoints_file), TRUE, is.na(prior_breakpoints_file))) {
-    svs = read.table(prior_breakpoints_file, header=T, stringsAsFactors=F)
-  }
+#   segment_breakpoints = collapse_bafsegmented_to_segments(BAFvals)
+#   if (!is.null(prior_breakpoints_file) & !ifelse(is.null(prior_breakpoints_file), TRUE, prior_breakpoints_file=="NA") & !ifelse(is.null(prior_breakpoints_file), TRUE, is.na(prior_breakpoints_file))) {
+#     svs = read.table(prior_breakpoints_file, header=T, stringsAsFactors=F)
+#   }
 
   # Create a plot per chromosome that shows the segments with their CN state in text
-  for (chr in chr_names) {
-    pos = SNPpos[SNPpos[,1]==chr, 2]
-    #if no points to plot, skip
-    if (length(pos)==0) { next }
-
-    if (!is.null(prior_breakpoints_file) & !ifelse(is.null(prior_breakpoints_file), TRUE, prior_breakpoints_file=="NA") & !ifelse(is.null(prior_breakpoints_file), TRUE, is.na(prior_breakpoints_file))) {
-      svs_pos = svs[svs$chromosome==chr,]$position / 1000000
-    } else {
-      svs_pos = NULL
-    }
-
-    breakpoints_pos = segment_breakpoints[segment_breakpoints$chromosome==chr,]
-    breakpoints_pos = sort(unique(c(breakpoints_pos$start, breakpoints_pos$end) / 1000000))
-
-    png(filename = paste(output.figures.prefix, chr,".png",sep=""), width = 2000, height = 2000, res = 200)
-    create.subclonal.cn.plot(chrom=chr,
-                             chrom.position=pos/1000000,
-                             LogRposke=LogRvals[LogRvals[,1]==chr,2],
-                             LogRchr=LogRvals[LogRvals[,1]==chr,3],
-                             BAFchr=BAF[SNPpos[,1]==chr],
-                             BAFsegchr=BAFseg[SNPpos[,1]==chr],
-                             BAFpvalschr=BAFpvals[SNPpos[,1]==chr],
-                             subcloneres=subcloneres,
-                             breakpoints_pos=breakpoints_pos,
-                             svs_pos=svs_pos,
-                             siglevel=siglevel,
-                             x.min=min(pos)/1000000,
-                             x.max=max(pos)/1000000,
-                             title=paste(sample.name,", chromosome ", chr, sep=""),
-                             xlab="Position (Mb)",
-                             ylab.logr="LogR",
-                             ylab.baf="BAF (phased)")
-    dev.off()
-  }
+#   for (chr in chr_names) {
+#     pos = SNPpos[SNPpos[,1]==chr, 2]
+#     #if no points to plot, skip
+#     if (length(pos)==0) { next }
+#
+#     if (!is.null(prior_breakpoints_file) & !ifelse(is.null(prior_breakpoints_file), TRUE, prior_breakpoints_file=="NA") & !ifelse(is.null(prior_breakpoints_file), TRUE, is.na(prior_breakpoints_file))) {
+#       svs_pos = svs[svs$chromosome==chr,]$position / 1000000
+#     } else {
+#       svs_pos = NULL
+#     }
+#
+#     breakpoints_pos = segment_breakpoints[segment_breakpoints$chromosome==chr,]
+#     breakpoints_pos = sort(unique(c(breakpoints_pos$start, breakpoints_pos$end) / 1000000))
+#
+#     png(filename = paste(output.figures.prefix, chr,".png",sep=""), width = 2000, height = 2000, res = 200)
+#     create.subclonal.cn.plot(chrom=chr,
+#                              chrom.position=pos/1000000,
+#                              LogRposke=LogRvals[LogRvals[,1]==chr,2],
+#                              LogRchr=LogRvals[LogRvals[,1]==chr,3],
+#                              BAFchr=BAF[SNPpos[,1]==chr],
+#                              BAFsegchr=BAFseg[SNPpos[,1]==chr],
+#                              BAFpvalschr=BAFpvals[SNPpos[,1]==chr],
+#                              subcloneres=subcloneres,
+#                              breakpoints_pos=breakpoints_pos,
+#                              svs_pos=svs_pos,
+#                              siglevel=siglevel,
+#                              x.min=min(pos)/1000000,
+#                              x.max=max(pos)/1000000,
+#                              title=paste(sample.name,", chromosome ", chr, sep=""),
+#                              xlab="Position (Mb)",
+#                              ylab.logr="LogR",
+#                              ylab.baf="BAF (phased)")
+#     dev.off()
+#   }
 
   # Cast columns back to numeric
   subclones = as.data.frame(subcloneres)
@@ -380,7 +380,7 @@ callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.fil
   ploidy = sum((segment_states_min+segment_states_maj) * seg_length, na.rm=T) / sum(seg_length, na.rm=T)
 
   # Plot genome wide figures
-  plot.gw.subclonal.cn(subclones=subclones, BAFvals=BAFvals, rho=rho, ploidy=ploidy, goodness=goodness, output.gw.figures.prefix=output.gw.figures.prefix, chr.names=chr_names, tumourname=sample.name)
+#   plot.gw.subclonal.cn(subclones=subclones, BAFvals=BAFvals, rho=rho, ploidy=ploidy, goodness=goodness, output.gw.figures.prefix=output.gw.figures.prefix, chr.names=chr_names, tumourname=sample.name)
 
   # Create user friendly cellularity and ploidy output file
   cellularity_ploidy_output = data.frame(purity = c(rho), ploidy = c(ploidy), psi = c(psit))

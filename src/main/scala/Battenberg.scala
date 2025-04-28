@@ -60,8 +60,8 @@ case class Battenberg(control_file: String, tumour_file: String):
     val input_baf_segment = s"${utils.working_directory}/${utils.tumourName}.BAFsegmented.txt"
     val input_baf = s"${utils.working_directory}/${utils.tumourName}_mutantBAF.tab"
 
-    val outputfile_prefix = s"${utils.impute_directory}/${utils.tumourName}_"
-
+    val outputfile_prefix = s"${utils.working_directory}/${utils.tumourName}_"
+    val ploting_prefix = s"${utils.plots_directory}/${utils.tumourName}_"
     val log_segment_file = s"${utils.impute_directory}/${utils.tumourName}.logRsegmented.txt"
     val cmd_fit_copy_number = Seq(
       "Rscript",
@@ -75,7 +75,8 @@ case class Battenberg(control_file: String, tumour_file: String):
                 inputfile.baf.segmented = "$input_baf_segment",
                 inputfile.baf = "$input_baf",
                 inputfile.logr = "$logr_file",
-                log_segment_file = "$log_segment_file"
+                log_segment_file = "$log_segment_file",
+                ploting_prefix = "$ploting_prefix"
               )
               """
     )
