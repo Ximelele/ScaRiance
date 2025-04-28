@@ -26,7 +26,68 @@ case class Battenberg(control_file: String, tumour_file: String):
     //      //impute.runHaplotyping(spark, chrom, this.utils)
     //      haplotype.getChromosomeBafs(spark = spark, SNP_file = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_$chrom.txt", haplotype_File = s"${utils.impute_directory}/${utils.tumourName}_impute_output_${chrom}_allHaplotypeInfo.txt", utils = utils, output_file = s"${utils.impute_directory}/${utils.tumourName}_impute_output_${chrom}_heterozygousMutBAFs_haplotyped.txt", minCounts = 10)
     //    })
-        utils.concatenateBAFfiles(spark = spark, inputStart = s"${utils.impute_directory}/${utils.tumourName}_impute_output_")
+    //    utils.concatenateBAFfiles(spark = spark, inputStart = s"${utils.impute_directory}/${utils.tumourName}_impute_output_")
+
+
+    // Starting R segmetation part
+    import scala.sys.process._
+    val cmd_segmentation = Seq(
+      "Rscript",
+      "-e",
+      s"""
+          source("/app/ScalaBattenberg/src/main/R/Segmentation.R")
+
+          segment.baf.phased(
+            samplename = "${utils.tumourName}",
+            inputfile = "${utils.impute_directory}/${utils.tumourName}_heterozygousMutBAFs_haplotyped.txt",
+            outputfile = "${utils.working_directory}/${utils.tumourName}.BAFsegmented.txt",
+          )
+          """
+    )
+
+    var exitCode = cmd_segmentation.!
+
+    // Check the exit code
+    if (exitCode == 0) {
+      println("R script executed successfully")
+    } else {
+      println(s"R script failed with exit code $exitCode")
+    }
+
+    // fit copy number
+    val logr_file = s"${utils.working_directory}/${utils.tumourName}_mutantLogR.tab"
+
+    val input_baf_segment = s"${utils.working_directory}/${utils.tumourName}.BAFsegmented.txt"
+    val input_baf = s"${utils.working_directory}/${utils.tumourName}_mutantBAF.tab"
+
+    val outputfile_prefix = s"${utils.impute_directory}/${utils.tumourName}_"
+
+    val log_segment_file = s"${utils.impute_directory}/${utils.tumourName}.logRsegmented.txt"
+    val cmd_fit_copy_number = Seq(
+      "Rscript",
+      "-e",
+      s"""
+              source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
+
+              fit.copy.number(
+                samplename = "${utils.tumourName}",
+                outputfile.prefix  = "$outputfile_prefix",
+                inputfile.baf.segmented = "$input_baf_segment",
+                inputfile.baf = "$input_baf",
+                inputfile.logr = "$logr_file",
+                log_segment_file = "$log_segment_file"
+              )
+              """
+    )
+
+    exitCode = cmd_fit_copy_number.!
+
+    // Check the exit code
+    if (exitCode == 0) {
+      println("R script executed successfully")
+    } else {
+      println(s"R script failed with exit code $exitCode")
+    }
 
   }
 
