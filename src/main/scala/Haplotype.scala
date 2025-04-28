@@ -14,8 +14,6 @@ case class Haplotype():
 
     variant_data = variant_data.filter(col("allele1") =!= col("allele2"))
 
-    variant_data.show()
-
 
     snp_data = snp_data.join(variant_data, snp_data("POS") === variant_data("POS_var"), "inner")
     import org.apache.spark.sql.types._
@@ -32,6 +30,7 @@ case class Haplotype():
       utils.saveSingleFile(emptyDF, output_file)
       return
     }
+
     snp_data = snp_data.withColumn("ref_count",
         when(col("REF") === "A", col("Count_A"))
           .when(col("REF") === "C", col("Count_C"))
@@ -55,7 +54,6 @@ case class Haplotype():
 
     snp_data = snp_data.withColumn("hetMutBafs", col("alt_count") / col("denom"))
 
-    snp_data.show()
     snp_data = snp_data.select(col("#CHR").as("Chromosome"), col("POS").as("Position"), col("hetMutBafs").as(utils.tumourName))
 
     utils.saveSingleFile(snp_data, output_file)
