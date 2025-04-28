@@ -1249,7 +1249,7 @@ find_centroid_of_global_minima <- function( d, ref_seg_matrix, ref_major, ref_mi
   if (!is.na(distancepng)) {
     png(filename = distancepng, width = 1000, height = 1000, res = 1000/7)
   }
-  clonal_findcentroid.plot(minimise, dist_choice, -d, psis, rhos, new_bounds)
+#   clonal_findcentroid.plot(minimise, dist_choice, -d, psis, rhos, new_bounds)
   if (!is.na(distancepng)) { dev.off() }
 
 	optima_info = list( nropt = nropt, psi_opt1 = psi_opt1, rho_opt1 = rho_opt1, ploidy_opt1 = ploidy_opt1, ref_seg = ref_seg, goodnessOfFit_opt1 = goodnessOfFit_opt1 ) # kjd 10-3-2014
