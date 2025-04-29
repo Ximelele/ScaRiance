@@ -233,12 +233,12 @@ case class Impute():
   def runHaplotyping(spark: SparkSession, chromosome: String, utils: Utils): Unit = {
 
 
-    //        val vcfbeagle_path = generateImputeInput(spark, chromosome, utils)
-    val vcfbeagle_path = s"${utils.impute_directory}/${utils.tumourName}_beagle5_input_chr${chromosome.stripPrefix("chr")}.txt"
+    val vcfbeagle_path = generateImputeInput(spark, chromosome, utils)
+    //    val vcfbeagle_path = s"${utils.impute_directory}/${utils.tumourName}_beagle5_input_chr${chromosome.stripPrefix("chr")}.txt"
     val outbeagle_path = s"${utils.impute_directory}/${utils.tumourName}_beagle5_output_chr${chromosome.stripPrefix("chr")}.txt"
 
 
-    //    runBeagle5(vcf_path = vcfbeagle_path, utils = utils, output_path = outbeagle_path, chromosome = chromosome)
+    runBeagle5(vcf_path = vcfbeagle_path, utils = utils, output_path = outbeagle_path, chromosome = chromosome)
 
 
     val outfile = s"${utils.impute_directory}/${utils.tumourName}_impute_output_chr${chromosome.stripPrefix("chr")}_allHaplotypeInfo.txt"
