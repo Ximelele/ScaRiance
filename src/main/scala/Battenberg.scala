@@ -17,7 +17,7 @@ case class Battenberg(control_file: String, tumour_file: String):
       .appName("Battenberg")
       .master("local[*]")
       .getOrCreate()
-    prepare_Wgs.prepareWgs(utils = utils, controlFile = control_file, tumourFile = tumour_file)
+    prepare_Wgs.prepareWgs(spark = spark, utils = utils, controlFile = control_file, tumourFile = tumour_file)
 
     //
     this.utils.chromosomeNames.foreach(chrom => {
