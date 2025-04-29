@@ -9,9 +9,9 @@ case class PrepareWgs():
     val tumourAlleleCountsFilePrefix: String = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_"
     val normalAlleleCountsFilePrefix: String = s"${utils.allele_directory}/${utils.controlName}_alleleFrequencies_"
     utils.chromosomeNames.foreach(chromsome => {
-      getAlleleCounts(bamFile = tumourFile, outputFile = s"${utils.allele_directory}/${tumourFile.split("/").last}_alleleFrequencies_$chromsome.txt", g1000Loci = s"${Referencies.g1000prefix}$chromsome.txt")
+      getAlleleCounts(bamFile = tumourFile, outputFile = s"${utils.allele_directory}/${tumourFile.split("/").last}_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.referenciesFile.g1000prefix}$chromsome.txt")
 
-      getAlleleCounts(bamFile = controlFile, outputFile = s"${utils.allele_directory}/${controlFile.split("/").last}_alleleFrequencies_$chromsome.txt", g1000Loci = s"${Referencies.g1000prefix}$chromsome.txt")
+      getAlleleCounts(bamFile = controlFile, outputFile = s"${utils.allele_directory}/${controlFile.split("/").last}_alleleFrequencies_$chromsome.txt", g1000Loci = s"${utils.referenciesFile.g1000prefix}$chromsome.txt")
     })
 
 

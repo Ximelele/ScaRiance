@@ -13,7 +13,6 @@ case class Battenberg(control_file: String, tumour_file: String):
     this.setDefaultValues()
 
 
-    this.male = this.utils.isMale(tumour_file)
     val spark = SparkSession.builder()
       .appName("Battenberg")
       .master("local[*]")
@@ -23,7 +22,7 @@ case class Battenberg(control_file: String, tumour_file: String):
     //
     this.utils.chromosomeNames.foreach(chrom => {
 
-      impute.runHaplotyping(spark, chrom, this.utils)
+      impute.runHaplotyping(spark, chrom.toString, this.utils)
       haplotype.getChromosomeBafs(spark = spark, SNP_file = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_$chrom.txt", haplotype_File = s"${utils.impute_directory}/${utils.tumourName}_impute_output_${chrom}_allHaplotypeInfo.txt", utils = utils, output_file = s"${utils.impute_directory}/${utils.tumourName}_impute_output_${chrom}_heterozygousMutBAFs_haplotyped.txt", minCounts = 10)
     })
     utils.concatenateBAFfiles(spark = spark, inputStart = s"${utils.impute_directory}/${utils.tumourName}_impute_output_")
