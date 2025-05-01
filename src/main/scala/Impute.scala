@@ -203,7 +203,7 @@ case class Impute():
     chrom_cmd.!
 
     val chrom_prefix = s"sed -i 's/^chr//g' $outputFile"
-    //    sed -i 's/^chr//g'
+
     outputFile
   }
 
