@@ -199,8 +199,11 @@ case class Impute():
 
     cmd.!
 
-    val chrom_cmd = s"sed -i '' 's/^CHROM/#CHROM/g' $outputFile"
+    val chrom_cmd = s"sed -i 's/^CHROM/#CHROM/g' $outputFile"
     chrom_cmd.!
+
+    val chrom_prefix = s"sed -i 's/^chr//g' $outputFile"
+    //    sed -i 's/^chr//g'
     outputFile
   }
 
@@ -212,7 +215,7 @@ case class Impute():
     val cmd = Seq("java",
       s"-Xmx${beaglemaxmem}g",
       s"-Xms${beaglemaxmem}g",
-
+      s"-XX:+UseParallelGC",
       s"-jar ${utils.referenciesFile.beaglejar}",
       s"gt=$vcf_path",
       s"ref=${utils.referenciesFile.beagleref.replace("CHROMNAME", chromosome)}",

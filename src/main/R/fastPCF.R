@@ -440,28 +440,6 @@ filterMarkS4 <- function(x,kmin,L,L2,frac1,frac2,frac3,thres){
 	return(mark)
 }
 
-#Get mad SD-estimate
-
-##Input:
-### x: vector of observations for which mad Sd is to be calculated
-### k: window size to be used in median filtering
-
-##Output:
-### SD: mad sd estimate
-
-##Required by:
-### multiPcf
-### fastPcf
-### pcf
-### aspcf
-
-
-##Requires:
-### medianFilter
-
-
-
-
 getMad <- function(x,k=25){
 
   #Remove observations that are equal to zero; are likely to be imputed, should not contribute to sd:
@@ -475,26 +453,6 @@ getMad <- function(x,k=25){
 
 	return(SD)
 }
-
-
-#########################################################################
-# Function to calculate running median for a given a window size
-#########################################################################
-
-##Input:
-### x: vector of numeric values
-### k: window size to be used for the sliding window (actually half-window size)
-
-## Output:
-### runMedian : the running median corresponding to each observation
-
-##Required by:
-### getMad
-### medianFilter
-
-
-##Requires:
-### none
 
 medianFilter <- function(x,k){
   n <- length(x)
