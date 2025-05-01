@@ -8,7 +8,6 @@ lazy val root = (project in file("."))
   )
 
 
-
 libraryDependencies ++= Seq(
 
   ("org.apache.spark" %% "spark-sql" % "3.5.5").cross(CrossVersion.for3Use2_13),
@@ -17,4 +16,7 @@ libraryDependencies ++= Seq(
 
 )
 
+
+fork := true
+run / javaOptions ++= Seq("-Xmx5G", "-XX:+UseG1GC")
 
