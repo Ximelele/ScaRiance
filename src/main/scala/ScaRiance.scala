@@ -61,7 +61,8 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
         System.exit(1)
       }
     }
-  // add print segmenting
+
+    // add print segmenting
     val cmd_segmentation = Seq(
       "Rscript",
       "-e",
@@ -76,7 +77,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
               """
     )
 
-    runRcode(cmd_segmentation)
+    //    runRcode(cmd_segmentation)
 
 
     // fit copy number

@@ -620,7 +620,7 @@ calc_distance_clonal <- function(segs, dist_choice, rho, psi, gamma_param, read_
       #
 
 
-      segment_info = is.segment.clonal(LogR, BAFreq, BAF.size, BAF.sd, rho, psi, gamma_param, siglevel_BAF, maxdist_BAF, siglevel_LogR, maxdist_LogR) # kjd 21-2-2014
+      segment_info = is.segment.clonal(LogR, BAFreq, BAF.size, BAF.sd, rho, psi, gamma_param, siglevel_BAF, maxdist_BAF) # kjd 21-2-2014
       is.clonal = segment_info$is.clonal # kjd 21-2-2014
 
       nMaj = segment_info$nMaj
@@ -983,7 +983,6 @@ find_centroid_of_global_minima <- function(d, ref_seg_matrix, ref_major, ref_min
 {
 
 
-
   if (!(minimise)) # kjd 12-2-2013
   {
     d = -d # This ensures that we "maximise" instead of "minimise"!
@@ -1064,7 +1063,7 @@ find_centroid_of_global_minima <- function(d, ref_seg_matrix, ref_major, ref_min
           perczeroAbb = 0
         }
 
-        
+
         goodnessOfFit = gmin #DCW 250314 goodnessOfFit is the same as gmin, because the metric is the total amount of the genome that is clonal
         nropt = nropt + 1
         optima[[nropt]] = c(gmin, i, j, ploidy, goodnessOfFit)
