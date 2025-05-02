@@ -9,12 +9,13 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
   private val prepare_Wgs = PrepareWgs()
   private val impute = Impute()
   private val haplotype = Haplotype()
+  private val spark: SparkSession = SparkSession.builder()
+    .appName("ScaRiance")
+    .master("local[*]")
+    .getOrCreate()
 
   def run(): Unit = {
-    val spark = SparkSession.builder()
-      .appName("ScaRience")
-      .master("local[*]")
-      .getOrCreate()
+
 
     this.setDefaultValues(spark)
 
@@ -49,7 +50,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
 
   def segmentation(): Unit = {
 
-    def runRcode(cmd: String): Unit = {
+    def runRcode(cmd: Seq): Unit = {
       import scala.sys.process.*
       val exitCode = cmd.!
 
