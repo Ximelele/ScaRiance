@@ -129,23 +129,6 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     )
 
     runRcode(call_subclones)
-
-
-    val callChrXsubclones = Seq(
-      "Rscript",
-      "-e",
-      s"""
-                      source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
-
-                      callChrXsubclones(
-                        tumourname = "${utils.working_directory}/${utils.tumourName}",
-                        chrom_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
-
-                      )
-                      """
-    )
-
-    runRcode(callChrXsubclones)
   }
 
 
