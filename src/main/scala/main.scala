@@ -8,6 +8,18 @@ object Main {
     var skipImputation: Boolean = false
     var skipSegmentation: Boolean = false
 
+
+    def printUsage(): Unit = {
+      println("Usage: ScaRiance [options]")
+      println("Required options:")
+      println("  -control_file <path>      Path to control BAM file")
+      println("  -tumour_file <path>       Path to tumour BAM file")
+      println("Optional switches:")
+      println("  -skip_allele_counting     Skip the allele counting step")
+      println("  -skip_imputation          Skip the imputation step")
+      println("  -skip_segmentation        Skip the segmentation step")
+    }
+
     // Parse arguments
     var i = 0
     while (i < args.length) {
@@ -55,6 +67,7 @@ object Main {
     def fileExists(path: String): Boolean = {
       File(path).exists
     }
+
     // Check for required arguments
     if (controlFile.isEmpty) {
       println("Error: Missing required -control_file argument")
@@ -87,16 +100,5 @@ object Main {
 
 
     scaRiance.run()
-
-    def printUsage(): Unit = {
-      println("Usage: ScaRiance [options]")
-      println("Required options:")
-      println("  -control_file <path>      Path to control BAM file")
-      println("  -tumour_file <path>       Path to tumour BAM file")
-      println("Optional switches:")
-      println("  -skip_allele_counting     Skip the allele counting step")
-      println("  -skip_imputation          Skip the imputation step")
-      println("  -skip_segmentation        Skip the segmentation step")
-    }
   }
 }
