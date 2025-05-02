@@ -206,7 +206,7 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
                       tempBAFsegm = BAFsegm)) # Keep track of BAFsegm for the plot below
   }
 
-  BAFraw = as.data.frame(readr::read_tsv(file = filename, col_names = header, col_types = "cin"))
+  BAFraw = as.data.frame(readr::read_tsv(file = inputfile, col_names = header, col_types = "cin"))
   if (!is.null(prior_breakpoints_file)) { bkps = read.table(prior_breakpoints_file, header = T, stringsAsFactors = F) } else { bkps = NULL }
 
   BAFoutput = NULL
