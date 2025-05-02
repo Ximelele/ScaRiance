@@ -195,7 +195,7 @@ case class Impute():
     import scala.sys.process._
 
     val cmd = Seq("bash", "-c",
-      s"(echo '${headerContent.mkString("\n")}'; cat $outputFile) > ${outputFile}.temp && mv ${outputFile}.temp $outputFile")
+      s"(echo '${headerContent.mkString("\n")}'; cat $outputFile) > $outputFile.temp && mv $outputFile.temp $outputFile")
 
     cmd.!
 
@@ -207,9 +207,9 @@ case class Impute():
     outputFile
   }
 
-  def runBeagle5(vcf_path: String, utils: Utils, output_path: String, beaglemaxmem: Int = 10,
-                 beaglewindow: Int = 40,
-                 beagleoverlap: Int = 4, nthreads: Int = 1, window: Int = 1, overlap: Int = 1, chromosome: String): Unit = {
+  private def runBeagle5(vcf_path: String, utils: Utils, output_path: String, beaglemaxmem: Int = 10,
+                         beaglewindow: Int = 40,
+                         beagleoverlap: Int = 4, nthreads: Int = 1, window: Int = 1, overlap: Int = 1, chromosome: String): Unit = {
 
 
     val cmd = Seq("java",

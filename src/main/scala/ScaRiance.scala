@@ -1,8 +1,9 @@
+import org.apache.spark.SparkContext
 import org.apache.spark.sql.SparkSession
 
 import scala.collection.parallel.CollectionConverters.*
 
-case class Battenberg(control_file: String, tumour_file: String):
+case class ScaRiance(control_file: String, tumour_file: String, skip_allele_counting: Boolean = false, skip_imputation: Boolean = false, skip_segmentation: Boolean = false):
 
   private val utils = Utils()
   private val prepare_Wgs = PrepareWgs()
@@ -10,48 +11,72 @@ case class Battenberg(control_file: String, tumour_file: String):
   private val haplotype = Haplotype()
 
   def run(): Unit = {
-    this.setDefaultValues()
-
-
     val spark = SparkSession.builder()
-      .appName("Battenberg")
+      .appName("ScaRience")
       .master("local[*]")
       .getOrCreate()
-    prepare_Wgs.prepareWgs(spark = spark, utils = utils, controlFile = control_file, tumourFile = tumour_file)
 
-    //
+    this.setDefaultValues(spark)
+
+    if (!skip_allele_counting) {
+      alle_counting()
+    }
+
+    if (!skip_imputation) {
+      imputation()
+    }
+
+    if (!skip_segmentation) {
+      segmentation()
+    }
+
+    spark.stop()
+  }
+
+
+  def alle_counting(): Unit = {
+    prepare_Wgs.prepareWgs(spark = spark, utils = utils, controlFile = control_file, tumourFile = tumour_file)
+  }
+
+  def imputation(): Unit = {
     this.utils.chromosomeNames.foreach(chrom => {
 
       impute.runHaplotyping(spark, chrom.toString, this.utils)
       haplotype.getChromosomeBafs(spark = spark, SNP_file = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_$chrom.txt", haplotype_File = s"${utils.impute_directory}/${utils.tumourName}_impute_output_${chrom}_allHaplotypeInfo.txt", utils = utils, output_file = s"${utils.impute_directory}/${utils.tumourName}_impute_output_${chrom}_heterozygousMutBAFs_haplotyped.txt", minCounts = 10)
     })
     utils.concatenateBAFfiles(spark = spark, inputStart = s"${utils.impute_directory}/${utils.tumourName}_impute_output_")
+  }
 
+  def segmentation(): Unit = {
 
-    // Starting R segmetation part
-    import scala.sys.process._
+    def runRcode(cmd: String): Unit = {
+      import scala.sys.process._
+      val exitCode = cmd.!
+
+      // Check the exit code
+      if (exitCode == 0) {
+        println("R script executed successfully")
+      } else {
+        println(s"R script failed with exit code $exitCode")
+      }
+    }
+
     val cmd_segmentation = Seq(
       "Rscript",
       "-e",
       s"""
-          source("/app/ScalaBattenberg/src/main/R/Segmentation.R")
+              source("/app/ScalaBattenberg/src/main/R/Segmentation.R")
 
-          segment.baf.phased(
-            samplename = "${utils.tumourName}",
-            inputfile = "${utils.impute_directory}/${utils.tumourName}_heterozygousMutBAFs_haplotyped.txt",
-            outputfile = "${utils.working_directory}/${utils.tumourName}.BAFsegmented.txt",
-          )
-          """
+              segment.baf.phased(
+                samplename = "${utils.tumourName}",
+                inputfile = "${utils.impute_directory}/${utils.tumourName}_heterozygousMutBAFs_haplotyped.txt",
+                outputfile = "${utils.working_directory}/${utils.tumourName}.BAFsegmented.txt",
+              )
+              """
     )
 
-    var exitCode = cmd_segmentation.!
+    runRcode(cmd_segmentation)
 
-    // Check the exit code
-    if (exitCode == 0) {
-      println("R script executed successfully")
-    } else {
-      println(s"R script failed with exit code $exitCode")
-    }
 
     // fit copy number
     val logr_file = s"${utils.working_directory}/${utils.tumourName}_mutantLogR.tab"
@@ -66,86 +91,67 @@ case class Battenberg(control_file: String, tumour_file: String):
       "Rscript",
       "-e",
       s"""
-              source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
+                  source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
 
-              fit.copy.number(
-                samplename = "${utils.tumourName}",
-                outputfile.prefix  = "$outputfile_prefix",
-                inputfile.baf.segmented = "$input_baf_segment",
-                inputfile.baf = "$input_baf",
-                inputfile.logr = "$logr_file",
-                log_segment_file = "$log_segment_file",
-                ploting_prefix = "$ploting_prefix"
-              )
-              """
+                  fit.copy.number(
+                    samplename = "${utils.tumourName}",
+                    outputfile.prefix  = "$outputfile_prefix",
+                    inputfile.baf.segmented = "$input_baf_segment",
+                    inputfile.baf = "$input_baf",
+                    inputfile.logr = "$logr_file",
+                    log_segment_file = "$log_segment_file",
+                    ploting_prefix = "$ploting_prefix"
+                  )
+                  """
     )
 
-    exitCode = cmd_fit_copy_number.!
+    runRcode(cmd_fit_copy_number)
 
-    // Check the exit code
-    if (exitCode == 0) {
-      println("R script executed successfully")
-    } else {
-      println(s"R script failed with exit code $exitCode")
-    }
-
-    val call_sublocnes = Seq(
+    val call_subclones = Seq(
       "Rscript",
       "-e",
       s"""
-              source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
+                  source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
 
-              callSubclones(
-                sample.name = "${utils.tumourName}",
-                baf.segmented.file = "$input_baf_segment",
-                logr.file = "$logr_file",
-                rho.psi.file = "${utils.working_directory}/${utils.tumourName}_rho_and_psi.txt",
-                output.file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
-                output.gw.figures.prefix= "${utils.plots_directory}/${utils.tumourName}_BattenbergProfile",
-                masking_output_file="${utils.plots_directory}/${utils.tumourName}_segment_masking_details.txt",
-                chr_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
+                  callSubclones(
+                    sample.name = "${utils.tumourName}",
+                    baf.segmented.file = "$input_baf_segment",
+                    logr.file = "$logr_file",
+                    rho.psi.file = "${utils.working_directory}/${utils.tumourName}_rho_and_psi.txt",
+                    output.file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
+                    output.gw.figures.prefix= "${utils.plots_directory}/${utils.tumourName}_BattenbergProfile",
+                    masking_output_file="${utils.plots_directory}/${utils.tumourName}_segment_masking_details.txt",
+                    chr_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
 
-              )
-              """
+                  )
+                  """
     )
 
-    exitCode = call_sublocnes.!
-
-    if (exitCode == 0) {
-      println("R script executed successfully")
-    } else {
-      println(s"R script failed with exit code $exitCode")
-    }
+    runRcode(call_subclones)
 
 
     val callChrXsubclones = Seq(
       "Rscript",
       "-e",
       s"""
-                  source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
+                      source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
 
-                  callChrXsubclones(
-                    tumourname = "${utils.working_directory}/${utils.tumourName}",
-                    chrom_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
+                      callChrXsubclones(
+                        tumourname = "${utils.working_directory}/${utils.tumourName}",
+                        chrom_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
 
-                  )
-                  """
+                      )
+                      """
     )
 
-    exitCode = callChrXsubclones.!
-
-    if (exitCode == 0) {
-      println("R script executed successfully")
-    } else {
-      println(s"R script failed with exit code $exitCode")
-    }
-
+    runRcode(callChrXsubclones)
   }
 
-  private def setDefaultValues(): Unit = {
+
+  private def setDefaultValues(spark: SparkSession): Unit = {
     this.utils.tumourName = tumour_file.split("/").last
     this.utils.controlName = control_file.split("/").last
-    this.utils.is_male = this.utils.isMale(tumour_file)
+    this.utils.is_male = this.utils.isMale(tumour_file, spark)
     this.utils.setChromosomesNames(control_file)
 
     if (this.utils.chromosomeNames(0).toString.contains("chr")) {

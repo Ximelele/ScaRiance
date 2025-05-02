@@ -1,4 +1,4 @@
-class Referencies():
+class References:
   var g1000prefix = ""
   var g1000alleleprefix = ""
   var impute_file: String = ""
