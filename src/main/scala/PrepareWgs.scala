@@ -206,10 +206,10 @@ case class PrepareWgs():
     joinedDf = joinedDf.withColumnRenamed("mutant_CHR", "Chromosome")
       .withColumnRenamed("mutant_POS", "Position")
 
-    utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalBAF").as(tumourName)), BAFnormalFile)
-    utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutantBAF").as(tumourName)), BAFmutantFile)
-    utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalLogR").as(tumourName)), logRnormalFile)
-    utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("log2mutantLogR").as(tumourName)), logRmutantFile)
+    utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalBAF").as(utils.tumourName)), BAFnormalFile)
+    utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutantBAF").as(utils.tumourName)), BAFmutantFile)
+    utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalLogR").as(utils.tumourName)), logRnormalFile)
+    utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("log2mutantLogR").as(utils.tumourName)), logRmutantFile)
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutCount1").as("mutCountT1"), col("mutCount2").as("mutCountT2"), col("normCount1").as("mutCountN1"), col("normCount2").as("mutCountN2")), combinedAlleleCountsFile)
 
 
