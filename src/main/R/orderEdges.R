@@ -2,7 +2,7 @@
 #' @author dw9, kd7
 #' @noRd
 orderEdges <- function(levels, observedBAF, totalCopyNumber, minorCNV, majorCNV) {
-  result <- matrix(nrow = 6, ncol = 4)
+  result <- matrix(nrow = 6, ncol = 2)
   colnames(result) <- c("Major.Copy.Number", "Minor.Copy.Number")
   isLogRCase <- (totalCopyNumber < minorCNV + majorCNV + 1)
 
