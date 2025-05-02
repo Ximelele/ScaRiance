@@ -1,6 +1,7 @@
 import org.apache.spark.sql.*
 import org.apache.spark.sql.functions.*
 import org.apache.spark.sql.types.*
+import org.apache.spark.storage.StorageLevel
 
 import java.io.File
 import java.nio.file.{Files, Paths, StandardCopyOption}
@@ -62,9 +63,9 @@ case class PrepareWgs():
                                ): Unit = {
 
 
-    var inputData = utils.concatenateAlleleCountFiles(spark, tumourAlleleCountsFilePrefix)
-    var normalInputData = utils.concatenateAlleleCountFiles(spark, normalAlleleCountsFilePrefix)
-    var alleleData = utils.concatenateG1000SnpFiles(spark, utils.referenciesFile.g1000alleleprefix)
+    var inputData = utils.concatenateAlleleCountFiles(spark, tumourAlleleCountsFilePrefix).persist(StorageLevel.MEMORY_AND_DISK)
+    var normalInputData = utils.concatenateAlleleCountFiles(spark, normalAlleleCountsFilePrefix).persist(StorageLevel.MEMORY_AND_DISK)
+    var alleleData = utils.concatenateG1000SnpFiles(spark, utils.referenciesFile.g1000alleleprefix).persist(StorageLevel.MEMORY_AND_DISK)
 
 
     alleleData = alleleData
@@ -99,6 +100,16 @@ case class PrepareWgs():
         "inner")
       .join(inputData, alleleData("chrpos_allele") === inputData("chrpos_tumour"),
         "inner")
+
+    inputData.unpersist()
+    inputData = null
+
+    alleleData.unpersist()
+    alleleData = null
+
+    normalInputData.unpersist()
+    normalInputData = null
+
 
     joinedDf = joinedDf.drop("chrpos_allele")
       .drop("chrpos_normal")
@@ -181,9 +192,9 @@ case class PrepareWgs():
 
     joinedDf = joinedDf.withColumn("selector", (rand() * 2).cast("int"))
 
-    val log2UDF = udf((value: Double) => {
-      scala.math.log(value) / scala.math.log(2.0)
-    }, DoubleType)
+    //    val log2UDF = udf((value: Double) => {
+    //      scala.math.log(value) / scala.math.log(2.0)
+    //    }, DoubleType)
 
 
     joinedDf = joinedDf.withColumn("normalBAF",
@@ -201,10 +212,13 @@ case class PrepareWgs():
 
     val meanMutantLogR = joinedDf.agg(avg("mutantLogR")).first().getDouble(0)
 
-    joinedDf = joinedDf.withColumn("log2mutantLogR", log2UDF(col("mutantLogR") / lit(meanMutantLogR)))
+    joinedDf = joinedDf.withColumn("log2mutantLogR", log2(col("mutantLogR") / lit(meanMutantLogR)))
 
     joinedDf = joinedDf.withColumnRenamed("mutant_CHR", "Chromosome")
       .withColumnRenamed("mutant_POS", "Position")
+
+
+    joinedDf = joinedDf.persist(StorageLevel.DISK_ONLY)
 
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalBAF").as(utils.tumourName)), BAFnormalFile)
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutantBAF").as(utils.tumourName)), BAFmutantFile)
@@ -212,5 +226,5 @@ case class PrepareWgs():
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("log2mutantLogR").as(utils.tumourName)), logRmutantFile)
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutCount1").as("mutCountT1"), col("mutCount2").as("mutCountT2"), col("normCount1").as("mutCountN1"), col("normCount2").as("mutCountN2")), combinedAlleleCountsFile)
 
-
+    joinedDf.unpersist()
   }
