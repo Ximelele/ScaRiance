@@ -336,8 +336,8 @@ is.segment.clonal <- function(LogR, BAFreq, BAF.size, BAF.sd, rho, psi, gamma_pa
   #If the segment is called as subclonal, this is the edge that will be used to determine the subclonal proportions that are reported first
   all.edges = orderEdges(BAF_levels, BAFreq, ntot, x, y)
 
-  nMaj.test = all.edges[1, c(1, 3)]
-  nMin.test = all.edges[1, c(2, 4)]
+  nMaj.test = all.edges[1, 1]
+  nMin.test = all.edges[1, 2]
   test.BAF_levels = (1 - rho + rho * nMaj.test) / (2 - 2 * rho + rho * (nMaj.test + nMin.test))
   #problem if rho=1 and nMaj=0 and nMin=0
   test.BAF_levels[nMaj.test == 0 & nMin.test == 0] = 0.5

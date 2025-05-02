@@ -369,8 +369,8 @@ determine_copynumber = function(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctra
     #DCW - just test corners on the nearest edge to determine clonality
     # If the segment is called as subclonal, this is the edge that will be used to determine the subclonal proportions that are reported first
     all.edges = orderEdges(levels, l, ntot, x, y)
-    nMaj.test = all.edges[1, c(1, 3)]
-    nMin.test = all.edges[1, c(2, 4)]
+    nMaj.test = all.edges[1, 1]
+    nMin.test = all.edges[1, 2]
     test.levels = (1 - rho + rho * nMaj.test) / (2 - 2 * rho + rho * (nMaj.test + nMin.test))
     whichclosestlevel.test = which.min(abs(test.levels - l))
 
