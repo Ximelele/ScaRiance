@@ -91,8 +91,8 @@ object Main {
 
     // Create ScaRiance instance with all parameters
     val scaRiance = ScaRiance(
-      control_file = controlFile.get,
-      tumour_file = tumourFile.get,
+      control_file = controlFile.get.strip(),
+      tumour_file = tumourFile.get.strip(),
       skip_allele_counting = skipAlleleCounting,
       skip_imputation = skipImputation,
       skip_segmentation = skipSegmentation
