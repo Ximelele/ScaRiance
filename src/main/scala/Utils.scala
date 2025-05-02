@@ -214,6 +214,12 @@ case class Utils():
 
     var resultDf: DataFrame = null
 
+    val bafSegment = StructType(Seq(
+      StructField("Chromosome", StringType, nullable = true),
+      StructField("Position", IntegerType, nullable = true),
+      StructField(tumourName, DoubleType, nullable = true)
+    ))
+
 
     for (chrom <- chromosomeNames.toList) {
       val filename = s"$inputStart${chrom}_heterozygousMutBAFs_haplotyped.txt"
@@ -222,7 +228,7 @@ case class Utils():
 
       if (file.exists() && file.length() > 0) {
 
-        val chromDf = readTableGeneric(spark, filename)
+        val chromDf = readTableGeneric(spark, filename,bafSegment)
 
         // Append to the result
         if (resultDf == null) {
