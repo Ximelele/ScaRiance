@@ -1,7 +1,14 @@
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.*
+import org.apache.spark.sql.functions.*
+import org.apache.spark.sql.types.*
 
+import java.io.File
+import java.nio.file.{Files, Paths, StandardCopyOption}
+import scala.collection.mutable.ListBuffer
+import scala.collection.parallel.CollectionConverters.*
+import scala.collection.parallel.ParSeq
 import scala.sys.process.*
+import scala.util.{Random, Try}
 
 case class PrepareWgs():
 
@@ -57,7 +64,7 @@ case class PrepareWgs():
 
     var inputData = utils.concatenateAlleleCountFiles(spark, tumourAlleleCountsFilePrefix)
     var normalInputData = utils.concatenateAlleleCountFiles(spark, normalAlleleCountsFilePrefix)
-    var alleleData = utils.concatenateG1000SnpFiles(spark, referenciesFile.g1000alleleprefix)
+    var alleleData = utils.concatenateG1000SnpFiles(spark, utils.referenciesFile.g1000alleleprefix)
 
 
     alleleData = alleleData

@@ -1,6 +1,5 @@
-import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{col, monotonically_increasing_id}
-import org.apache.spark.sql.{Column, DataFrame, SparkSession}
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 
 case class Impute():
@@ -24,8 +23,8 @@ case class Impute():
 
   private def writeBeagleAsImpute(spark: SparkSession, beagle_file: String, output_file: String, utils: Utils): Unit = {
     var beagle_output = spark.read.option("header", "false").option("comment", "#").option("delimiter", "\t").csv(beagle_file)
-    import org.apache.spark.sql.types._
-    import org.apache.spark.sql.functions._
+    import org.apache.spark.sql.functions.*
+    import org.apache.spark.sql.types.*
 
     val customSchema = StructType(Array(
       StructField("CHROM", StringType, true),
@@ -74,7 +73,7 @@ case class Impute():
     val tumourAlleleCountsFile = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_$chromosome.txt"
     val normalAlleleCountsFile = s"${utils.allele_directory}/${utils.controlName}_alleleFrequencies_$chromosome.txt"
     val impute_info = parseImputeFile(spark, utils.is_male, chromosome, utils.referenciesFile.impute_file)
-    import spark.implicits._
+    import spark.implicits.*
     val impute_legend_files = impute_info.select("impute_legend").as[String].collect()
 
     var known_SNPs = spark.read.option("header", "true").option("sep", " ").csv(impute_legend_files(0))
@@ -113,7 +112,7 @@ case class Impute():
       "inner"
     ).orderBy(col("POS").cast("int"))
 
-    import org.apache.spark.sql.functions._
+    import org.apache.spark.sql.functions.*
 
     val nucleotides = Array("A", "C", "G", "T")
 
@@ -192,7 +191,7 @@ case class Impute():
       "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
       "##reference=hg38"
     )
-    import scala.sys.process._
+    import scala.sys.process.*
 
     val cmd = Seq("bash", "-c",
       s"(echo '${headerContent.mkString("\n")}'; cat $outputFile) > $outputFile.temp && mv $outputFile.temp $outputFile")
@@ -228,7 +227,7 @@ case class Impute():
 
     println(cmd)
 
-    import scala.sys.process._
+    import scala.sys.process.*
 
     cmd.!
   }

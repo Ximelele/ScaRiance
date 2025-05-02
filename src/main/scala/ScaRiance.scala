@@ -50,7 +50,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
   def segmentation(): Unit = {
 
     def runRcode(cmd: String): Unit = {
-      import scala.sys.process._
+      import scala.sys.process.*
       val exitCode = cmd.!
 
       // Check the exit code

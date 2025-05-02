@@ -1,13 +1,14 @@
-import org.apache.spark.sql.{Column, SaveMode}
+import org.apache.spark.sql.functions.*
+import org.apache.spark.sql.types.*
+import org.apache.spark.sql.*
 
 import java.io.File
 import java.nio.file.{Files, Paths, StandardCopyOption}
 import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.CollectionConverters.*
 import scala.collection.parallel.ParSeq
-import scala.sys.process._
-import scala.util.Try
 import scala.sys.process.*
+import scala.util.{Random, Try}
 
 case class Utils():
   val referenciesFile: References = References()
@@ -20,11 +21,6 @@ case class Utils():
   var controlName: String = ""
   var is_male: Boolean = true
 
-  import org.apache.spark.sql.functions.*
-  import org.apache.spark.sql.types.*
-  import org.apache.spark.sql.{DataFrame, SparkSession, Row}
-
-  import scala.util.Random
 
   def saveSingleFile(df: DataFrame, outputPath: String, header: Boolean = true): Unit = {
 
