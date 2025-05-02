@@ -58,6 +58,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
         println("R script executed successfully")
       } else {
         println(s"R script failed with exit code $exitCode")
+        System.exit(1)
       }
     }
 
