@@ -133,7 +133,7 @@ calc_binomial_prob <- function(sample_proportion, sample_size, pop_proportion) #
 #' The first hypothesis is the "best fit" model we can find.
 #' The second hypothesis is the "second best fit" model we can find.
 #' @noRd
-calc_ln_likelihood_ratio <- function(LogR, BAFreq, BAF.length, BAF.size, BAF.mean, read_depth, rho, psi, gamma_param, maxdist_BAF) # kjd 18-12-2013
+calc_ln_likelihood_ratio <- function(LogR, BAFreq, BAF.size, BAF.mean, read_depth, rho, psi, gamma_param) # kjd 18-12-2013
 {
   pooled_BAF.size = read_depth * BAF.size
 
@@ -368,7 +368,7 @@ is.segment.clonal <- function(LogR, BAFreq, BAF.size, BAF.sd, rho, psi, gamma_pa
 ####################################################################################################
 #' This function calculates a t variate.
 #' @noRd
-calc_standardised_error <- function(LogR, BAFreq, BAF.length, BAF.size, BAF.mean, BAF.sd, rho, psi, gamma_param, maxdist_BAF) # kjd 31-1-2014
+calc_standardised_error <- function(LogR, BAFreq, BAF.size, BAF.mean, BAF.sd, rho, psi, gamma_param, maxdist_BAF) # kjd 31-1-2014
 {
 
   # if we don't have a value for LogR, fill in 0
@@ -619,18 +619,19 @@ calc_distance_clonal <- function(segs, dist_choice, rho, psi, gamma_param, read_
       # Calculate P values
       #
 
-      segment_info = is.segment.clonal(LogR, BAFreq, BAF.length, BAF.size, BAF.mean, BAF.sd, read_depth, rho, psi, gamma_param, siglevel_BAF, maxdist_BAF, siglevel_LogR, maxdist_LogR) # kjd 21-2-2014
+
+      segment_info = is.segment.clonal(LogR, BAFreq, BAF.size, BAF.sd, rho, psi, gamma_param, siglevel_BAF, maxdist_BAF, siglevel_LogR, maxdist_LogR) # kjd 21-2-2014
       is.clonal = segment_info$is.clonal # kjd 21-2-2014
 
       nMaj = segment_info$nMaj
       nMin = segment_info$nMin
       is.balanced = segment_info$balanced
 
-      segment_size = BAF.length # OR segment_size = BAF.size ?
+      segment_size = BAF.size # OR segment_size = BAF.size ?
       genome_size = genome_size + segment_size
       seg_count = seg_count + 1 # kjd 24-1-2014
 
-      # if( pval[i] > siglevel_BAF ){
+
       if (is.clonal) { # kjd 21-2-2014
         clonal_genome_size = clonal_genome_size + segment_size
         clonal_seg_count = clonal_seg_count + 1 # kjd 24-1-2014
@@ -650,7 +651,7 @@ calc_distance_clonal <- function(segs, dist_choice, rho, psi, gamma_param, read_
       # Calculate "standardised error"
       #
 
-      standard_error_info = calc_standardised_error(LogR, BAFreq, BAF.length, BAF.size, BAF.mean, BAF.sd, rho, psi, gamma_param, maxdist_BAF) # kjd 31-1-2014
+      standard_error_info = calc_standardised_error(LogR, BAFreq, BAF.size, BAF.mean, BAF.sd, rho, psi, gamma_param, maxdist_BAF) # kjd 31-1-2014
 
       included_segment = standard_error_info$included_segment # kjd 31-1-2014
       tvar = standard_error_info$tvar # kjd 31-1-2014
@@ -671,7 +672,7 @@ calc_distance_clonal <- function(segs, dist_choice, rho, psi, gamma_param, read_
       # Calculate log likelihood ratio
       #
 
-      ln_lratio = calc_ln_likelihood_ratio(LogR, BAFreq, BAF.length, BAF.size, BAF.mean, read_depth, rho, psi, gamma_param, maxdist_BAF) # kjd 10-2-2014
+      ln_lratio = calc_ln_likelihood_ratio(LogR, BAFreq, BAF.size, BAF.mean, read_depth, rho, psi, gamma_param) # kjd 10-2-2014
 
       sum_ln_lratio = sum_ln_lratio + ln_lratio
 
@@ -744,7 +745,6 @@ calc_distance_clonal <- function(segs, dist_choice, rho, psi, gamma_param, read_
 
   distance_info = list(distance_value = dist_value, minimise = minimise, max_clonal_segment = max_clonal_segment, ref_maj = ref_maj, ref_min = ref_min) # kjd 10-2-2014
 
-  # return( clonal_proportion ) # kjd 24-1-2014
 
   return(distance_info) # kjd 10-2-2014
 
@@ -797,8 +797,7 @@ get_new_bounds = function(input_optimum_pair, ininitial_bounds) # kjd 21-2-2014
   rho_max_initial = ininitial_bounds$rho_max
 
   psi_range = 0.1 * (psi_max_initial - psi_min_initial)
-  #rho_range = 0.1 * ( rho_max_initial - rho_min_initial )
-  #DCW 170314 - rho range depends on optimum value of rho
+
   rho_range = 0.1 * rho_optimum
 
   if ((psi_optimum - 0.5 * psi_range) < psi_min_initial)
@@ -858,7 +857,7 @@ create_distance_matrix = function(s, dist_choice, gamma_param, uninformative_BAF
   d = matrix(nrow = length(psi_pos), ncol = length(rho_pos))
   rownames(d) = psi_pos
   colnames(d) = rho_pos
-  dmin = 1E20;
+
   for (i in 1:length(psi_pos)) {
     psi = psi_pos[i]
     for (j in 1:length(rho_pos)) {
@@ -867,7 +866,6 @@ create_distance_matrix = function(s, dist_choice, gamma_param, uninformative_BAF
       distance_info = calc_distance(s, dist_choice, rho, psi, gamma_param, uninformative_BAF_threshold = uninformative_BAF_threshold) # kjd 10-2-2014
 
       d[i, j] = distance_info$distance_value
-      # minimise = distance_info$minimise
 
     }
   }
@@ -876,7 +874,6 @@ create_distance_matrix = function(s, dist_choice, gamma_param, uninformative_BAF
 
   distance_matrix_info = list(distance_matrix = d, minimise = minimise)
 
-  # return(d)
   return(distance_matrix_info)
 
 }
@@ -902,8 +899,6 @@ create_distance_matrix_clonal = function(segs, dist_choice, gamma_param, read_de
   psi_pos = seq(psi_min, psi_max, delta_psi)
   rho_pos = seq(rho_min, rho_max, delta_rho)
 
-  # psi_pos = seq(1,5.4,0.05)
-  # rho_pos = seq(0.1,1.05,0.01)
 
   ref_seg_matrix = matrix(nrow = length(psi_pos), ncol = length(rho_pos))
   ref_major = matrix(nrow = length(psi_pos), ncol = length(rho_pos))
@@ -918,17 +913,17 @@ create_distance_matrix_clonal = function(segs, dist_choice, gamma_param, read_de
   d = matrix(nrow = length(psi_pos), ncol = length(rho_pos))
   rownames(d) = psi_pos
   colnames(d) = rho_pos
-  # dmin = 1E20;
+
   for (i in 1:length(psi_pos)) {
     psi = psi_pos[i]
     for (j in 1:length(rho_pos)) {
       rho = rho_pos[j]
 
-      # clonal_proportion = calc_clonal_proportion( s, LogRvals, BAFvals, segBAF.table, rho, psi, gamma_param, siglevel_BAF, maxdist_BAF ) # kjd 18-12-2013
+
       distance_info = calc_distance_clonal(s, dist_choice, rho, psi, gamma_param, read_depth, siglevel_BAF, maxdist_BAF, siglevel_LogR, maxdist_LogR, uninformative_BAF_threshold) # kjd 10-2-2014
 
       distance_value = distance_info$distance_value # kjd 10-2-2014
-      # minimise = distance_info$minimise # kjd 10-2-2014
+
       max_clonal_segment = distance_info$max_clonal_segment
 
       d[i, j] = distance_value # kjd 10-2-2014
@@ -987,9 +982,6 @@ calc_square_distance <- function(pt1, pt2) # kjd 27-2-2014
 find_centroid_of_global_minima <- function(d, ref_seg_matrix, ref_major, ref_minor, s, dist_choice, minimise, new_bounds, distancepng, gamma_param, siglevel_BAF, maxdist_BAF, siglevel_LogR, maxdist_LogR, allow100percent, uninformative_BAF_threshold, read_depth) # kjd 28-2-2014
 {
 
-  #Theoretmaxdist_BAF = sum(rep(0.25,dim(s)[1]) * s[,"length"] * ifelse(s[,"b"]==0.5,0.05,1),na.rm=T)
-  #DCW 180711 - try weighting BAF=0.5 equally with other points
-  # Theoretmaxdist_BAF = sum(rep(0.25,dim(s)[1]) * s[,"length"],na.rm=T)
 
 
   if (!(minimise)) # kjd 12-2-2013
@@ -997,8 +989,6 @@ find_centroid_of_global_minima <- function(d, ref_seg_matrix, ref_major, ref_min
     d = -d # This ensures that we "maximise" instead of "minimise"!
   }
 
-  # Find height of global minima;
-  # (subject to additional conditions: percentzero > 0.01 | perczeroAbb > 0.1)
 
   gmin = max(d)
   for (i in 1:(dim(d)[1])) {
@@ -1074,7 +1064,7 @@ find_centroid_of_global_minima <- function(d, ref_seg_matrix, ref_major, ref_min
           perczeroAbb = 0
         }
 
-        # goodnessOfFit = (1-m/Theoretmaxdist_BAF) * 100
+        
         goodnessOfFit = gmin #DCW 250314 goodnessOfFit is the same as gmin, because the metric is the total amount of the genome that is clonal
         nropt = nropt + 1
         optima[[nropt]] = c(gmin, i, j, ploidy, goodnessOfFit)
@@ -1639,9 +1629,7 @@ recalc_psi_t = function(psi, rho, gamma_param, lrrsegmented, segBAF.table, sigle
 
     segment_info = is.segment.clonal(LogR = s[i, "r"],
                                      BAFreq = s[i, "b"],
-                                     BAF.length = s[i, "length"],
                                      BAF.size = s[i, "size"],
-                                     BAF.mean = s[i, "mean"],
                                      BAF.sd = s[i, "sd"],
                                      rho = rho,
                                      psi = psi,

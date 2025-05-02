@@ -61,7 +61,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
         System.exit(1)
       }
     }
-
+  // add print segmenting
     val cmd_segmentation = Seq(
       "Rscript",
       "-e",
@@ -88,6 +88,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     val outputfile_prefix = s"${utils.working_directory}/${utils.tumourName}_"
     val ploting_prefix = s"${utils.plots_directory}/${utils.tumourName}_"
     val log_segment_file = s"${utils.impute_directory}/${utils.tumourName}.logRsegmented.txt"
+    // add print fit copy
     val cmd_fit_copy_number = Seq(
       "Rscript",
       "-e",
@@ -108,6 +109,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
 
     runRcode(cmd_fit_copy_number)
 
+    // add sublonal
     val call_subclones = Seq(
       "Rscript",
       "-e",
