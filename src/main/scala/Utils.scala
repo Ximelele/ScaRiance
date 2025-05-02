@@ -1,6 +1,6 @@
+import org.apache.spark.sql.*
 import org.apache.spark.sql.functions.*
 import org.apache.spark.sql.types.*
-import org.apache.spark.sql.*
 
 import java.io.File
 import java.nio.file.{Files, Paths, StandardCopyOption}
@@ -68,64 +68,22 @@ case class Utils():
    * @param header   Whether the file contains a header (Default: true)
    * @param rowNames Whether the file contains row names (Default: false)
    * @param sep      Column separator (Default: "\t")
-   * @param chromCol The column number that contains chromosome denominations. This column will automatically be cast as a String. Should be counted including the rowNames (Default: 1)
-   * @param skip     The number of rows to skip before reading (Default: 0)
    * @return A DataFrame with contents of the file
    */
   private def readTableGeneric(
                                 spark: SparkSession,
                                 file: String,
-                                header: Boolean = true,
-                                rowNames: Boolean = false,
-                                sep: String = "\t",
-                                chromCol: Int = 1,
-                                skip: Int = 0
+                                schema: StructType
                               ): DataFrame = {
 
-    // First, read a single line to get column names
-    val sampleDf = spark.read
-      .option("header", header)
-      .option("delimiter", sep)
-      .option("inferSchema", "true")
-      .csv(file)
-      .limit(1)
-
-    // Get column names and create schema with chromosome column as String
-    val columnNames = sampleDf.columns
-
-    // Create schema ensuring chromCol is treated as String
-    val schemaFields = new ListBuffer[StructField]()
-
-    for (i <- columnNames.indices) {
-      val dataType = if ((i + 1) == chromCol) StringType else sampleDf.schema(i).dataType
-      schemaFields += StructField(columnNames(i), dataType, true)
-    }
-
-    val schema = StructType(schemaFields.toList)
-
-    // Read the complete file with the custom schema
     var df = spark.read
       .format("csv")
-      .option("header", header)
-      .option("delimiter", sep)
+      .option("header", true)
+      .option("delimiter", "\t")
       .option("mode", "DROPMALFORMED")
       .schema(schema)
       .load(file)
 
-    // Skip rows if needed
-    if (skip > 0) {
-      df = df.offset(skip)
-    }
-
-    // Handle row names if needed
-    if (rowNames) {
-      val firstColName = df.columns(0)
-      val rowNamesCol = df.columns(0)
-
-      // Convert first column to row names (in Spark, we keep the column but can set it as an index for certain operations)
-      df = df.withColumn("rowName", col(firstColName))
-        .drop(firstColName)
-    }
 
     // Replace spaces with dots in column names
     val newColumnNames = df.columns.map(colName => colName.replace(" ", "."))
@@ -156,6 +114,15 @@ case class Utils():
 
     val validFiles = new ListBuffer[String]()
 
+    val alleleCountSchema = StructType(Seq(
+      StructField("#CHR", StringType, nullable = true),
+      StructField("POS", IntegerType, nullable = true),
+      StructField("Count_A", IntegerType, nullable = true),
+      StructField("Count_C", IntegerType, nullable = true),
+      StructField("Count_G", IntegerType, nullable = true),
+      StructField("Count_T", IntegerType, nullable = true),
+      StructField("Good_depth", IntegerType, nullable = true)
+    ))
 
     // Collect valid files that exist and have data
     for (chrom <- chromosomeNames.toList) {
@@ -175,7 +142,7 @@ case class Utils():
     var resultDf: DataFrame = null
 
     for (file <- validFiles) {
-      val currentDf = readTableGeneric(spark, file)
+      val currentDf = readTableGeneric(spark, file, alleleCountSchema)
 
       if (resultDf == null) {
         resultDf = currentDf
@@ -208,13 +175,19 @@ case class Utils():
     var resultDf: DataFrame = null
 
 
+    val g1000SnpSchema = StructType(Seq(
+      StructField("position", IntegerType, nullable = true),
+      StructField("a0", IntegerType, nullable = true),
+      StructField("a1", IntegerType, nullable = true)
+    ))
+
     for (chrom <- chromosomeNames.toList) {
       val filename = s"$inputStart$chrom.txt"
       val file = new File(filename)
 
       if (file.exists() && file.length() > 0) {
         // Read the file
-        val chromDf = readTableGeneric(spark, filename)
+        val chromDf = readTableGeneric(spark, filename, g1000SnpSchema)
 
         // Add chromosome column to the data
         val withChromDf = chromDf.withColumn("CHR", lit(chrom))

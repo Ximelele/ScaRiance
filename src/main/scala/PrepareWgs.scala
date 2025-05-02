@@ -13,18 +13,20 @@ import scala.util.{Random, Try}
 
 case class PrepareWgs():
 
-  def prepareWgs(spark: SparkSession, utils: Utils, controlFile: String, tumourFile: String): Unit = {
+  def prepareWgs(spark: SparkSession, utils: Utils, controlFile: String, tumourFile: String, skip_alle_counting: Boolean): Unit = {
 
     val tumourAlleleCountsFilePrefix: String = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_"
     val normalAlleleCountsFilePrefix: String = s"${utils.allele_directory}/${utils.controlName}_alleleFrequencies_"
-    utils.chromosomeNames.foreach(chromosome => {
-      alleleCounting(bamFile = tumourFile, outputFile = s"$tumourAlleleCountsFilePrefix$chromosome.txt", g1000Loci = s"${utils.referenciesFile.g1000prefix}$chromosome.txt")
 
-      alleleCounting(bamFile = controlFile, outputFile = s"$normalAlleleCountsFilePrefix$chromosome.txt", g1000Loci = s"${utils.referenciesFile.g1000prefix}$chromosome.txt")
-    })
+    if (!skip_alle_counting) {
+      utils.chromosomeNames.foreach(chromosome => {
+        alleleCounting(bamFile = tumourFile, outputFile = s"$tumourAlleleCountsFilePrefix$chromosome.txt", g1000Loci = s"${utils.referenciesFile.g1000prefix}$chromosome.txt")
 
+        alleleCounting(bamFile = controlFile, outputFile = s"$normalAlleleCountsFilePrefix$chromosome.txt", g1000Loci = s"${utils.referenciesFile.g1000prefix}$chromosome.txt")
+      })
+      processAlleleData(spark = spark, tumourAlleleCountsFilePrefix = tumourAlleleCountsFilePrefix, normalAlleleCountsFilePrefix = normalAlleleCountsFilePrefix, minCounts = 10, samplename = utils.tumourName, BAFnormalFile = s"${utils.working_directory}/${utils.tumourName}_normalBAF.tab", BAFmutantFile = s"${utils.working_directory}/${utils.tumourName}_mutantBAF.tab", logRnormalFile = s"${utils.working_directory}/${utils.tumourName}_normalLogR.tab", logRmutantFile = s"${utils.working_directory}/${utils.tumourName}_mutantLogR.tab", combinedAlleleCountsFile = s"${utils.working_directory}/${utils.tumourName}_alleleCounts.tab", utils = utils)
+    }
 
-    processAlleleData(spark = spark, tumourAlleleCountsFilePrefix = tumourAlleleCountsFilePrefix, normalAlleleCountsFilePrefix = normalAlleleCountsFilePrefix, minCounts = 10, samplename = utils.tumourName, BAFnormalFile = s"${utils.working_directory}/${utils.tumourName}_normalBAF.tab", BAFmutantFile = s"${utils.working_directory}/${utils.tumourName}_mutantBAF.tab", logRnormalFile = s"${utils.working_directory}/${utils.tumourName}_normalLogR.tab", logRmutantFile = s"${utils.working_directory}/${utils.tumourName}_mutantLogR.tab", combinedAlleleCountsFile = s"${utils.working_directory}/${utils.tumourName}_alleleCounts.tab", utils = utils)
 
   }
 
@@ -218,7 +220,7 @@ case class PrepareWgs():
       .withColumnRenamed("mutant_POS", "Position")
 
 
-    joinedDf = joinedDf.persist(StorageLevel.DISK_ONLY)
+    joinedDf = joinedDf.persist(StorageLevel.MEMORY_AND_DISK)
 
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalBAF").as(utils.tumourName)), BAFnormalFile)
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutantBAF").as(utils.tumourName)), BAFmutantFile)

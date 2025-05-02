@@ -19,9 +19,8 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
 
     this.setDefaultValues(spark)
 
-    if (!skip_allele_counting) {
-      alle_counting()
-    }
+    // allele skipping is happening inside function
+    alle_counting()
 
     if (!skip_imputation) {
       imputation()
@@ -36,7 +35,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
 
 
   def alle_counting(): Unit = {
-    prepare_Wgs.prepareWgs(spark = spark, utils = utils, controlFile = control_file, tumourFile = tumour_file)
+    prepare_Wgs.prepareWgs(spark = spark, utils = utils, controlFile = control_file, tumourFile = tumour_file, skip_alle_counting = skip_allele_counting)
   }
 
   def imputation(): Unit = {

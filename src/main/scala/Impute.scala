@@ -1,5 +1,6 @@
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.storage.StorageLevel
 
 
 case class Impute():
@@ -114,7 +115,6 @@ case class Impute():
 
     import org.apache.spark.sql.functions.*
 
-    val nucleotides = Array("A", "C", "G", "T")
 
     var withBAF = snp_data
       .join(known_SNPs.select("position", "a0", "a1"),
@@ -184,6 +184,7 @@ case class Impute():
 
 
     val outputFile = s"${utils.impute_directory}/${utils.tumourName}_beagle5_input_$chromosome.txt"
+    withBAF = withBAF.persist(StorageLevel.MEMORY_AND_DISK)
     utils.saveSingleFile(withBAF, outputPath = outputFile)
 
     val headerContent = Seq(
@@ -202,6 +203,8 @@ case class Impute():
     chrom_cmd.!
 
     val chrom_prefix = s"sed -i 's/^chr//g' $outputFile"
+
+    chrom_prefix.!
 
     outputFile
   }
