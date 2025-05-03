@@ -248,44 +248,8 @@ callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.fil
   ################################################################################################
   res = determine_copynumber(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctrans.logR, maxdist, siglevel)
   subcloneres = res$subcloneres
-  write.table(subcloneres, gsub(".txt", "_1.txt", output.file), quote = F, col.names = T, row.names = F, sep = "\t")
+  write.table(subcloneres, output.file, quote = F, col.names = T, row.names = F, sep = "\t")
 
-  # Scan the segments for cases that should be merged
-  res = merge_segments(subcloneres, BAFvals, LogRvals, rho, psi, gamma, calc_seg_baf_option)
-  BAFvals = res$bafsegmented
-
-  res = determine_copynumber(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctrans.logR, maxdist, siglevel)
-  subcloneres = res$subcloneres
-
-  # Scan for very high copy number segments and set those to NA - This is in part an artifact of small segments
-  res = mask_high_cn_segments(subcloneres, BAFvals, max_allowed_state)
-  subcloneres = res$subclones
-
-  # Write the masking details to file
-  masking_details = data.frame(samplename = sample.name, masked_count = res$masked_count, masked_size = res$masked_size, max_allowed_state = max_allowed_state)
-  write.table(masking_details, file = masking_output_file, quote = F, col.names = T, row.names = F, sep = "\t")
-
-  write.table(subcloneres[, c(1:3, 8:13)], output.file, quote = F, col.names = T, row.names = F, sep = "\t")
-  write.table(subcloneres, gsub(".txt", "_extended.txt", output.file), quote = F, col.names = T, row.names = F, sep = "\t")
-
-
-  subclones = as.data.frame(subcloneres)
-  subclones[, 2:ncol(subclones)] = sapply(2:ncol(subclones), function(x) { as.numeric(as.character(subclones[, x])) })
-
-  # Recalculate the ploidy based on the actual fit
-  seg_length = floor((subclones$endpos - subclones$startpos) / 1000)
-  is_subclonal_maj = abs(subclones$nMaj1_A - subclones$nMaj2_A) > 0
-  is_subclonal_min = abs(subclones$nMin1_A - subclones$nMin2_A) > 0
-  is_subclonal_maj[is.na(is_subclonal_maj)] = F
-  is_subclonal_min[is.na(is_subclonal_min)] = F
-  segment_states_min = subclones$nMin1_A * ifelse(is_subclonal_min, subclones$frac1_A, 1) + ifelse(is_subclonal_min, subclones$nMin2_A, 0) * ifelse(is_subclonal_min, subclones$frac2_A, 0)
-  segment_states_maj = subclones$nMaj1_A * ifelse(is_subclonal_maj, subclones$frac1_A, 1) + ifelse(is_subclonal_maj, subclones$nMaj2_A, 0) * ifelse(is_subclonal_maj, subclones$frac2_A, 0)
-  ploidy = sum((segment_states_min + segment_states_maj) * seg_length, na.rm = T) / sum(seg_length, na.rm = T)
-
-  # Create user friendly cellularity and ploidy output file
-  cellularity_ploidy_output = data.frame(purity = c(rho), ploidy = c(ploidy), psi = c(psit))
-  cellularity_file = gsub("_copynumber.txt", "_purity_ploidy.txt", output.file) # NAP: updated the name of the output file, consistent with new title
-  write.table(cellularity_ploidy_output, cellularity_file, quote = F, sep = "\t", row.names = F)
 }
 
 #' Given all the determined values make a copy number call for each segment
