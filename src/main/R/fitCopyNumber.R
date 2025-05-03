@@ -205,13 +205,12 @@ fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmente
 #' @param segmentation.gamma Legacy parameter that is no longer used (Default NA)
 #' @param siglevel Threshold under which a p-value becomes significant. When it is significant a second copy number state will be fitted (Default 0.05)
 #' @param maxdist Slack in BAF space to allow a segment to be off it's optimum before becoming significant. A segment becomes significant very quickly when a breakpoint is missed, this parameter alleviates the effect (Default 0.01)
-#' @param noperms The number of permutations to be run when bootstrapping the confidence intervals on the copy number state of each segment (Default 1000)
 #' @param seed Seed to set when performing bootstrapping (Default: Current time)
 #' @param calc_seg_baf_option Various options to recalculate the BAF of a segment. Options are: 1 - median, 2 - mean, 3 - ifelse median==0|1, mean, median. (Default: 3)
 #' @author dw9, sd11
 #' @export
 
-callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.file, output.file, output.figures.prefix, output.gw.figures.prefix, chr_names, masking_output_file, max_allowed_state = 250, prior_breakpoints_file = NULL, gamma = 1, segmentation.gamma = NA, siglevel = 0.05, maxdist = 0.01, noperms = 1000, seed = as.integer(Sys.time()), calc_seg_baf_option = 3) {
+callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.file, output.file, output.figures.prefix, output.gw.figures.prefix, chr_names, masking_output_file, max_allowed_state = 250, prior_breakpoints_file = NULL, gamma = 1, segmentation.gamma = NA, siglevel = 0.05, maxdist = 0.01, seed = as.integer(Sys.time()), calc_seg_baf_option = 3) {
 
 
   set.seed(seed)
@@ -247,7 +246,7 @@ callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.fil
   ################################################################################################
   # Determine copy number for each segment
   ################################################################################################
-  res = determine_copynumber(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctrans.logR, maxdist, siglevel, noperms)
+  res = determine_copynumber(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctrans.logR, maxdist, siglevel)
   subcloneres = res$subcloneres
   write.table(subcloneres, gsub(".txt", "_1.txt", output.file), quote = F, col.names = T, row.names = F, sep = "\t")
 
@@ -255,7 +254,7 @@ callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.fil
   res = merge_segments(subcloneres, BAFvals, LogRvals, rho, psi, gamma, calc_seg_baf_option)
   BAFvals = res$bafsegmented
 
-  res = determine_copynumber(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctrans.logR, maxdist, siglevel, noperms)
+  res = determine_copynumber(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctrans.logR, maxdist, siglevel)
   subcloneres = res$subcloneres
 
   # Scan for very high copy number segments and set those to NA - This is in part an artifact of small segments
