@@ -30,7 +30,7 @@ library("assertthat")
 #' @param analysis A String representing the type of analysis to be run, this determines whether the distance figure is produced (Default paired)
 #' @author dw9, sd11
 #' @export
-fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmented, inputfile.baf, inputfile.logr, dist_choice = 0, ascat_dist_choice = 1, min.ploidy = 1.6, max.ploidy = 8.1, min.rho = 0.1, max.rho = 1.0, min.goodness = 30, uninformative_BAF_threshold = 0.51, gamma_param = 1, use_preset_rho_psi = F, preset_rho = NA, preset_psi = NA, read_depth = 30, log_segment_file, ploting_prefix) {
+fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmented, inputfile.baf, inputfile.logr, dist_choice = 0, ascat_dist_choice = 1, min.ploidy = 1.6, max.ploidy = 4.8, min.rho = 0.1, max.rho = 1.0, min.goodness = 63, uninformative_BAF_threshold = 0.51, gamma_param = 1, use_preset_rho_psi = F, preset_rho = NA, preset_psi = NA, read_depth = 30, log_segment_file, ploting_prefix) {
 
 
   assert_that(file.exists(inputfile.baf.segmented), msg = "Baf segment file not found")
