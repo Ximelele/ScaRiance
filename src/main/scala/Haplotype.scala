@@ -1,6 +1,6 @@
 
 import org.apache.spark.sql.functions.{col, lit, when}
-import org.apache.spark.sql.{Column, DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 case class Haplotype():
 
@@ -16,7 +16,7 @@ case class Haplotype():
 
 
     snp_data = snp_data.join(variant_data, snp_data("POS") === variant_data("POS_var"), "inner")
-    import org.apache.spark.sql.types._
+    import org.apache.spark.sql.types.*
     val schema = StructType(Array(
       StructField("Chromosome", StringType, nullable = true),
       StructField("Position", IntegerType, nullable = true),

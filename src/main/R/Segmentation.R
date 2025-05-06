@@ -1,12 +1,6 @@
 source("/app/ScalaBattenberg/src/main/R/fastPCF.R")
 library("readr")
-#' Parser for BAF data
-#' @param filename Filename of the file to read in
-#' @param header Whether the file contains a header (Default: TRUE)
-#' @return A data frame with BAF content
-read_baf = function(filename, header=T) {
-  return(readr::read_tsv(file = filename, col_names = header, col_types = "cin"))
-}
+
 
 #' Helper function to adjust the BAF segmented values. By default the segmentation
 #' takes the mean BAFphased for each segment, but that doesn't work very well with
@@ -16,18 +10,14 @@ read_baf = function(filename, header=T) {
 #' @return A data frame with columns BAFphased and BAFseg.
 #' @author sd11
 #' @noRd
-adjustSegmValues = function(baf_chrom) {
-  segs = rle(baf_chrom$BAFseg)
-  for (i in 1:length(segs$lengths)) {
-    end = cumsum(segs$lengths[1:i])
-    end = end[length(end)]
-    start = (end-segs$lengths[i]) + 1 # segs$lengths contains end points
-    # baf_chrom$bafmean[start:end] = mean(baf_chrom$BAFphased[start:end])
-    baf_chrom$BAFseg[start:end] = median(baf_chrom$BAFphased[start:end])
-    # This needs the ASCAT version of PCF
-    # datwins = madWins(baf_chrom$BAFphased[start:end], 2.5, 25)$ywin
-    # baf_chrom$madwins_mean[start:end] = mean(datwins)
-    # baf_chrom$madwins_median[start:end] = median(datwins)
+adjustSegmValues <- function(baf_chrom) {
+  segments <- rle(baf_chrom$BAFseg)
+  for (i in 1:length(segments$lengths)) {
+    end <- cumsum(segments$lengths[1:i])
+    end <- end[length(end)]
+    start <- (end - segments$lengths[i]) + 1
+
+    baf_chrom$BAFseg[start:end] <- median(baf_chrom$BAFphased[start:end])
   }
   return(baf_chrom)
 }
@@ -49,22 +39,22 @@ adjustSegmValues = function(baf_chrom) {
 #' @param calc_seg_baf_option Various options to recalculate the BAF of a segment. Options are: 1 - median, 2 - mean, 3 - ifelse median==0 or 1, median, mean. (Default: 3)
 #' @author sd11
 #' @export
-segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoints_file=NULL, gamma=10, phasegamma=3, kmin=3, phasekmin=3, no_segmentation=F, calc_seg_baf_option=3) {
+segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoints_file = NULL, gamma = 10, phasegamma = 3, kmin = 3, phasekmin = 3, no_segmentation = F, calc_seg_baf_option = 3) {
   # Function that takes SNPs that belong to a single segment and looks for big holes between
   # each pair of SNPs. If there is a big hole it will add another breakpoint to the breakpoints data.frame
   addin_bigholes = function(breakpoints, positions, chrom, startpos, maxsnpdist) {
     # If there is a big hole (i.e. centromere), add it in as a separate set of breakpoints
 
     # Get the chromosome coordinate right before a big hole
-    bigholes = which(diff(positions)>=maxsnpdist)
+    bigholes = which(diff(positions) >= maxsnpdist)
     if (length(bigholes) > 0) {
       for (endindex in bigholes) {
         breakpoints = rbind(breakpoints,
-                            data.frame(chrom=chrom, start=startpos, end=positions[endindex]))
-        startpos = positions[endindex+1]
+                            data.frame(chrom = chrom, start = startpos, end = positions[endindex]))
+        startpos = positions[endindex + 1]
       }
     }
-    return(list(breakpoints=breakpoints, startpos=startpos))
+    return(list(breakpoints = breakpoints, startpos = startpos))
   }
 
   # Helper function that creates segment breakpoints from SV calls
@@ -93,7 +83,7 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
 
       for (svposition in bkps_breakpoints[startfromsv:length(bkps_breakpoints)]) {
         selectedsnps = BAFrawchr$Position >= startpos & BAFrawchr$Position <= svposition
-        if (sum(selectedsnps, na.rm=T) > 0) {
+        if (sum(selectedsnps, na.rm = T) > 0) {
 
           if (addin_bigholes) {
             # If there is a big hole (i.e. centromere), add it in as a separate set of breakpoints
@@ -103,7 +93,7 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
           }
 
           endindex = max(which(selectedsnps))
-          breakpoints = rbind(breakpoints, data.frame(chrom=chrom, start=startpos, end=BAFrawchr$Position[endindex]))
+          breakpoints = rbind(breakpoints, data.frame(chrom = chrom, start = startpos, end = BAFrawchr$Position[endindex]))
           # Previous SV is the new starting point for the next segment
           startpos = BAFrawchr$Position[endindex + 1]
         }
@@ -112,7 +102,7 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
       # Add the remainder of the chromosome, if available
       if (BAFrawchr$Position[nrow(BAFrawchr)] > bkps_breakpoints[length(bkps_breakpoints)]) {
         endindex = nrow(BAFrawchr)
-        breakpoints = rbind(breakpoints, data.frame(chrom=chrom, start=startpos, end=BAFrawchr$Position[endindex]))
+        breakpoints = rbind(breakpoints, data.frame(chrom = chrom, start = startpos, end = BAFrawchr$Position[endindex]))
       }
     } else {
       # There are no SVs, so create one big segment
@@ -122,12 +112,12 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
 
       if (addin_bigholes) {
         # If there is a big hole (i.e. centromere), add it in as a separate set of breakpoints
-        res = addin_bigholes(breakpoints, BAFrawchr$Position, chrom, startpos, maxsnpdist=maxsnpdist)
+        res = addin_bigholes(breakpoints, BAFrawchr$Position, chrom, startpos, maxsnpdist = maxsnpdist)
         breakpoints = res$breakpoints
         startpos = res$startpos
       }
 
-      breakpoints = rbind(breakpoints, data.frame(chrom=chrom, start=startpos, end=BAFrawchr$Position[nrow(BAFrawchr)]))
+      breakpoints = rbind(breakpoints, data.frame(chrom = chrom, start = startpos, end = BAFrawchr$Position[nrow(BAFrawchr)]))
     }
     return(breakpoints)
   }
@@ -142,16 +132,16 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
   # @param gamma
   # @param no_segmentation Do not perform segmentation. This step will switch the haplotype blocks, but then just takes the mean BAFphased as BAFsegm
   # @return A data.frame with columns Chromosome,Position,BAF,BAFphased,BAFseg
-  run_pcf = function(BAFrawchr, presegment_chrom_start, presegment_chrom_end, phasekmin, phasegamma, kmin, gamma, no_segmentation=F) {
+  run_pcf = function(BAFrawchr, presegment_chrom_start, presegment_chrom_end, phasekmin, phasegamma, kmin, gamma, no_segmentation = F) {
     row.indices = which(BAFrawchr$Position >= presegment_chrom_start &
                           BAFrawchr$Position <= presegment_chrom_end)
 
-    BAF = BAFrawchr[row.indices,2]
-    pos = BAFrawchr[row.indices,1]
+    BAF = BAFrawchr[row.indices, 2]
+    pos = BAFrawchr[row.indices, 1]
     # names(BAF) = rownames(BAFrawchr[row.indices])
     # names(pos) = rownames(BAFrawchr[row.indices])
 
-    sdev <- getMad(ifelse(BAF<0.5,BAF,1-BAF),k=25)
+    sdev <- getMad(ifelse(BAF < 0.5, BAF, 1 - BAF), k = 25)
     # Standard deviation is not defined for a single value
     if (is.na(sdev)) {
       sdev = 0
@@ -159,24 +149,24 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
     #DCW 250314
     #for cell lines, sdev goes to zero in regions of LOH, which causes problems.
     #0.09 is around the value expected for a binomial distribution around 0.5 with depth 30
-    if(sdev<0.09){
+    if (sdev < 0.09) {
       sdev = 0.09
     }
 
-    print(paste("BAFlen=",length(BAF),sep=""))
-    if(length(BAF)<50){
-      BAFsegm = rep(mean(BAF),length(BAF))
-    }else{
-      res = selectFastPcf(BAF,phasekmin,phasegamma*sdev,T)
+    print(paste("BAFlen=", length(BAF), sep = ""))
+    if (length(BAF) < 50) {
+      BAFsegm = rep(mean(BAF), length(BAF))
+    }else {
+      res = selectFastPcf(BAF, phasekmin, phasegamma * sdev, T)
       BAFsegm = res$yhat
     }
 
-    BAFphased = ifelse(BAFsegm>0.5,BAF,1-BAF)
+    BAFphased = ifelse(BAFsegm > 0.5, BAF, 1 - BAF)
 
-    if(length(BAFphased)<50 | no_segmentation){
-      BAFphseg = rep(mean(BAFphased),length(BAFphased))
-    }else{
-      res = selectFastPcf(BAFphased,kmin,gamma*sdev,T)
+    if (length(BAFphased) < 50 | no_segmentation) {
+      BAFphseg = rep(mean(BAFphased), length(BAFphased))
+    }else {
+      res = selectFastPcf(BAFphased, kmin, gamma * sdev, T)
       BAFphseg = res$yhat
     }
 
@@ -187,19 +177,19 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
       #
 
       # Recalculate the BAF of each segment, if required
-      if (calc_seg_baf_option==1) {
+      if (calc_seg_baf_option == 1) {
         # Adjust the segment BAF to not take the mean as that is sensitive to improperly phased segments
-        BAFphseg = adjustSegmValues(data.frame(BAFphased=BAFphased, BAFseg=BAFphseg))$BAFseg
-      } else if (calc_seg_baf_option==2) {
+        BAFphseg = adjustSegmValues(data.frame(BAFphased = BAFphased, BAFseg = BAFphseg))$BAFseg
+      } else if (calc_seg_baf_option == 2) {
         # Don't do anything, the BAF is already the mean
-      } else if (calc_seg_baf_option==3) {
+      } else if (calc_seg_baf_option == 3) {
         # Take the median, unless the median is exactly 0 or 1. At the extreme
         # there is no difference between lets say 40 and 41 copies and BB cannot
         # fit a copy number state. The mean is less prone to become exactly 0 or 1
         # but the median is generally a better estimate that is less sensitive to
         # how well the haplotypes have been reconstructed
-        BAFphseg_median = adjustSegmValues(data.frame(BAFphased=BAFphased, BAFseg=BAFphseg))$BAFseg
-        BAFphseg = ifelse(BAFphseg_median %in% c(0,1), BAFphseg, BAFphseg_median)
+        BAFphseg_median = adjustSegmValues(data.frame(BAFphased = BAFphased, BAFseg = BAFphseg))$BAFseg
+        BAFphseg = ifelse(BAFphseg_median %in% c(0, 1), BAFphseg, BAFphseg_median)
         # if (BAFphseg_median!=0 & BAFphseg_median!=1) {
         #   BAFphseg = BAFphseg_median
         # }
@@ -208,30 +198,30 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
       }
     }
 
-    return(data.frame(Chromosome=rep(chr, length(row.indices)),
-                      Position=BAFrawchr[row.indices,1],
-                      BAF=BAF,
-                      BAFphased=BAFphased,
-                      BAFseg=BAFphseg,
-                      tempBAFsegm=BAFsegm)) # Keep track of BAFsegm for the plot below
+    return(data.frame(Chromosome = rep(chr, length(row.indices)),
+                      Position = BAFrawchr[row.indices, 1],
+                      BAF = BAF,
+                      BAFphased = BAFphased,
+                      BAFseg = BAFphseg,
+                      tempBAFsegm = BAFsegm)) # Keep track of BAFsegm for the plot below
   }
 
-  BAFraw = as.data.frame(read_baf(inputfile))
-  if (!is.null(prior_breakpoints_file)) { bkps = read.table(prior_breakpoints_file, header=T, stringsAsFactors=F) } else { bkps = NULL }
+  BAFraw = as.data.frame(readr::read_tsv(file = inputfile, col_names = TRUE, col_types = "cin"))
+  if (!is.null(prior_breakpoints_file)) { bkps = read.table(prior_breakpoints_file, header = T, stringsAsFactors = F) } else { bkps = NULL }
 
   BAFoutput = NULL
-  for (chr in unique(BAFraw[,1])) {
+  for (chr in unique(BAFraw[, 1])) {
     print(paste0("Segmenting ", chr))
-    BAFrawchr = BAFraw[BAFraw[,1]==chr,c(2,3)]
-    # BAFrawchr = bafsegments[bafsegments$Chromosome==chr, c(2,3)]
-    BAFrawchr = BAFrawchr[!is.na(BAFrawchr[,2]),]
+    BAFrawchr = BAFraw[BAFraw[, 1] == chr, c(2, 3)]
+
+    BAFrawchr = BAFrawchr[!is.na(BAFrawchr[, 2]),]
     if (!is.null(bkps)) {
-      bkps_chrom = bkps[bkps$chromosome==chr,]
+      bkps_chrom = bkps[bkps$chromosome == chr,]
     } else {
-      bkps_chrom = data.frame(chromosome=character(), position=numeric())
+      bkps_chrom = data.frame(chromosome = character(), position = numeric())
     }
 
-    breakpoints_chrom = bkps_to_presegment_breakpoints(chr, bkps_chrom, BAFrawchr, addin_bigholes=T)
+    breakpoints_chrom = bkps_to_presegment_breakpoints(chr, bkps_chrom, BAFrawchr, addin_bigholes = T)
     BAFoutputchr = NULL
 
     for (r in 1:nrow(breakpoints_chrom)) {
@@ -240,13 +230,11 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
     }
 
 
-
-
-    BAFoutputchr$BAFphased = ifelse(BAFoutputchr$tempBAFsegm>0.5, BAFoutputchr$BAF, 1-BAFoutputchr$BAF)
+    BAFoutputchr$BAFphased = ifelse(BAFoutputchr$tempBAFsegm > 0.5, BAFoutputchr$BAF, 1 - BAFoutputchr$BAF)
     # Remove the temp BAFsegm values as they are only needed for plotting
-    BAFoutput = rbind(BAFoutput, BAFoutputchr[,c(1:5)])
+    BAFoutput = rbind(BAFoutput, BAFoutputchr[, c(1:5)])
   }
-  colnames(BAFoutput) = c("Chromosome","Position","BAF","BAFphased","BAFseg")
-  write.table(BAFoutput, outputfile, sep="\t", row.names=F, col.names=T, quote=F)
+  colnames(BAFoutput) = c("Chromosome", "Position", "BAF", "BAFphased", "BAFseg")
+  write.table(BAFoutput, outputfile, sep = "\t", row.names = F, col.names = T, quote = F)
 }
 

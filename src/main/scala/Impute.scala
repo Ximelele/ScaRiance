@@ -1,6 +1,6 @@
-import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{col, monotonically_increasing_id}
-import org.apache.spark.sql.{Column, DataFrame, SparkSession}
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.storage.StorageLevel
 
 
 case class Impute():
@@ -24,8 +24,8 @@ case class Impute():
 
   private def writeBeagleAsImpute(spark: SparkSession, beagle_file: String, output_file: String, utils: Utils): Unit = {
     var beagle_output = spark.read.option("header", "false").option("comment", "#").option("delimiter", "\t").csv(beagle_file)
-    import org.apache.spark.sql.types._
-    import org.apache.spark.sql.functions._
+    import org.apache.spark.sql.functions.*
+    import org.apache.spark.sql.types.*
 
     val customSchema = StructType(Array(
       StructField("CHROM", StringType, true),
@@ -74,7 +74,7 @@ case class Impute():
     val tumourAlleleCountsFile = s"${utils.allele_directory}/${utils.tumourName}_alleleFrequencies_$chromosome.txt"
     val normalAlleleCountsFile = s"${utils.allele_directory}/${utils.controlName}_alleleFrequencies_$chromosome.txt"
     val impute_info = parseImputeFile(spark, utils.is_male, chromosome, utils.referenciesFile.impute_file)
-    import spark.implicits._
+    import spark.implicits.*
     val impute_legend_files = impute_info.select("impute_legend").as[String].collect()
 
     var known_SNPs = spark.read.option("header", "true").option("sep", " ").csv(impute_legend_files(0))
@@ -113,9 +113,8 @@ case class Impute():
       "inner"
     ).orderBy(col("POS").cast("int"))
 
-    import org.apache.spark.sql.functions._
+    import org.apache.spark.sql.functions.*
 
-    val nucleotides = Array("A", "C", "G", "T")
 
     var withBAF = snp_data
       .join(known_SNPs.select("position", "a0", "a1"),
@@ -185,6 +184,7 @@ case class Impute():
 
 
     val outputFile = s"${utils.impute_directory}/${utils.tumourName}_beagle5_input_$chromosome.txt"
+    withBAF = withBAF.persist(StorageLevel.MEMORY_AND_DISK)
     utils.saveSingleFile(withBAF, outputPath = outputFile)
 
     val headerContent = Seq(
@@ -192,27 +192,32 @@ case class Impute():
       "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
       "##reference=hg38"
     )
-    import scala.sys.process._
+    import scala.sys.process.*
 
     val cmd = Seq("bash", "-c",
-      s"(echo '${headerContent.mkString("\n")}'; cat $outputFile) > ${outputFile}.temp && mv ${outputFile}.temp $outputFile")
+      s"(echo '${headerContent.mkString("\n")}'; cat $outputFile) > $outputFile.temp && mv $outputFile.temp $outputFile")
 
     cmd.!
 
-    val chrom_cmd = s"sed -i '' 's/^CHROM/#CHROM/g' $outputFile"
+    val chrom_cmd = s"sed -i 's/^CHROM/#CHROM/g' $outputFile"
     chrom_cmd.!
+
+    val chrom_prefix = s"sed -i 's/^chr//g' $outputFile"
+
+    chrom_prefix.!
+
     outputFile
   }
 
-  def runBeagle5(vcf_path: String, utils: Utils, output_path: String, beaglemaxmem: Int = 10,
-                 beaglewindow: Int = 40,
-                 beagleoverlap: Int = 4, nthreads: Int = 1, window: Int = 1, overlap: Int = 1, chromosome: String): Unit = {
+  private def runBeagle5(vcf_path: String, utils: Utils, output_path: String, beaglemaxmem: Int = 10,
+                         beaglewindow: Int = 40,
+                         beagleoverlap: Int = 4, nthreads: Int = 1, window: Int = 1, overlap: Int = 1, chromosome: String): Unit = {
 
 
     val cmd = Seq("java",
       s"-Xmx${beaglemaxmem}g",
       s"-Xms${beaglemaxmem}g",
-
+      s"-XX:+UseParallelGC",
       s"-jar ${utils.referenciesFile.beaglejar}",
       s"gt=$vcf_path",
       s"ref=${utils.referenciesFile.beagleref.replace("CHROMNAME", chromosome)}",
@@ -225,7 +230,7 @@ case class Impute():
 
     println(cmd)
 
-    import scala.sys.process._
+    import scala.sys.process.*
 
     cmd.!
   }
