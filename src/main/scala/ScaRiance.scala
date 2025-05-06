@@ -77,7 +77,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
               """
     )
 
-    //    runRcode(cmd_segmentation)
+    runRcode(cmd_segmentation)
 
 
     // fit copy number
@@ -111,10 +111,10 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     runRcode(cmd_fit_copy_number)
 
     // add sublonal
-        val call_subclones = Seq(
-          "Rscript",
-          "-e",
-          s"""
+    val call_subclones = Seq(
+      "Rscript",
+      "-e",
+      s"""
                       source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
 
                       callSubclones(
@@ -129,9 +129,9 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
 
                       )
                       """
-        )
+    )
 
-        runRcode(call_subclones)
+    runRcode(call_subclones)
   }
 
 
