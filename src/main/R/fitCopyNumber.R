@@ -166,13 +166,8 @@ fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmente
 
   ascat_optimum_pair = runASCAT(logR, 1 - BAF.data[, 3], segLogR, segBAF, chr.segs, ascat_dist_choice, distance.outfile, copynumberprofile.outfile, nonroundedprofile.outfile, cnaStatusFile = cnaStatusFile, gamma = gamma_param, allow100percent = T, reliabilityFile = NA, min.ploidy = min.ploidy, max.ploidy = max.ploidy, min.rho = min.rho, max.rho = max.rho, min.goodness, chr.names = chr.names, analysis = "paired") # kjd 4-2-2014
 
-
-  distance.outfile = paste(ploting_prefix, "second_distance.png", sep = "", collapse = "") # kjd 20-2-2014
-  copynumberprofile.outfile = paste(ploting_prefix, "second_copynumberprofile.png", sep = "", collapse = "") # kjd 20-2-2014
-  nonroundedprofile.outfile = paste(ploting_prefix, "second_nonroundedprofile.png", sep = "", collapse = "") # kjd 20-2-2014
-
   # All is set up, now run ASCAT to obtain a clonal copynumber profile
-  out = run_clonal_ASCAT(logR, 1 - BAF.data[, 3], segLogR, segBAF, chr.segs, matched.segmented.BAF.data, ascat_optimum_pair, dist_choice, distance.outfile, copynumberprofile.outfile, nonroundedprofile.outfile, gamma_param = gamma_param, read_depth, uninformative_BAF_threshold, allow100percent = T, reliabilityFile = NA, psi_min_initial = min.ploidy, psi_max_initial = max.ploidy, rho_min_initial = min.rho, rho_max_initial = max.rho, chr.names = chr.names) # kjd 21-2-2014
+  out = run_clonal_ASCAT(logR, 1 - BAF.data[, 3], segLogR, segBAF, chr.segs, matched.segmented.BAF.data, ascat_optimum_pair, dist_choice, NA, NA, NA, gamma_param = gamma_param, read_depth, uninformative_BAF_threshold, allow100percent = T, reliabilityFile = NA, psi_min_initial = min.ploidy, psi_max_initial = max.ploidy, rho_min_initial = min.rho, rho_max_initial = max.rho, chr.names = chr.names) # kjd 21-2-2014
 
   ascat_optimum_pair_fraction_of_genome = out$output_optimum_pair_without_ref
   ascat_optimum_pair_ref_seg = out$output_optimum_pair
@@ -653,115 +648,6 @@ merge_segments = function(subclones, bafsegmented, logR, rho, psi, platform_gamm
   return(list(bafsegmented = bafsegmented, subclones = subclones))
 }
 
-#' Mask segments that have a too high CN state
-#' @param subclones Subclones output data
-#' @param bafsegmented BAFsegmented data
-#' @param max_allowed_state The maximum state allowed before overruling takes place
-#' @return A list with the masked subclones, bafsegmented and the number of segments masked and their total genome size
-#' @author sd11
-mask_high_cn_segments = function(subclones, bafsegmented, max_allowed_state) {
-  count = 0
-  masked_size = 0
-  for (i in 1:nrow(subclones)) {
-    if (subclones$nMaj1_A[i] > max_allowed_state | subclones$nMin1_A[i] > max_allowed_state) {
-      # Mask this segment
-
-      subclones[i, "Major.Copy.Number"] = NA
-      subclones[i, "Minor.Copy.Number"] = NA
-      # Mask the BAFsegmented
-      bafsegmented[subclones$chr[i] == bafsegmented$Chromosome &
-                     subclones$startpos[i] < bafsegmented$Position &
-                     subclones$endpos[i] >= bafsegmented$Position, c("BAFseg")] = NA
-      count = count + 1
-      masked_size = masked_size + (subclones$endpos[i] - subclones$startpos[i])
-    }
-  }
-  return(list(subclones = subclones, bafsegmented = bafsegmented, masked_count = count, masked_size = masked_size))
-}
-
-
-#' Plot the copy number genome wide in two different ways. This creates the Battenberg average
-#' profile where subclonal copy number is represented as a mixture of two different states and
-#' the Battenberg subclones profile where subclonal copy number is plotted as two different
-#' separate states. The thickness of the line represents the fraction of tumour cells carying
-#' the particular state.
-#' @noRd
-plot.gw.subclonal.cn = function(subclones, BAFvals, rho, ploidy, goodness, output.gw.figures.prefix, chr.names, tumourname) {
-  # Map start and end of each segment into the BAF values. The plot uses the index of this BAF table as x-axis
-  pos_min = array(NA, nrow(subclones))
-  pos_max = array(NA, nrow(subclones))
-  for (i in 1:nrow(subclones)) {
-    segm_chr = subclones$chr[i] == BAFvals$Chromosome &
-      subclones$startpos[i] < BAFvals$Position &
-      subclones$endpos[i] >= BAFvals$Position
-    pos_min[i] = min(which(segm_chr))
-    pos_max[i] = max(which(segm_chr))
-  }
-
-  # For those segments that are subclonal, Obtain the second state.
-  is_subclonal = which(subclones$frac1_A < 1)
-  subcl_min = array(NA, length(is_subclonal))
-  subcl_max = array(NA, length(is_subclonal))
-  for (i in 1:length(is_subclonal)) {
-    segment_index = is_subclonal[i]
-    segm_chr = subclones$chr[segment_index] == BAFvals$Chromosome &
-      subclones$startpos[segment_index] < BAFvals$Position &
-      subclones$endpos[segment_index] >= BAFvals$Position
-    subcl_min[i] = min(which(segm_chr))
-    subcl_max[i] = max(which(segm_chr))
-  }
-
-  # Determine whether it's the major or the minor allele that is represented by two states
-  is_subclonal_maj = abs(subclones$nMaj1_A - subclones$nMaj2_A) > 0
-  is_subclonal_min = abs(subclones$nMin1_A - subclones$nMin2_A) > 0
-  is_subclonal_maj[is.na(is_subclonal_maj)] = F
-  is_subclonal_min[is.na(is_subclonal_min)] = F
-
-  # BB represents subclonal CN as a mixture of two CN states. Calculate this mixture for both minor allele and total CN.
-  #segment_states_min = subclones$nMin1_A * ifelse(is_subclonal_min, subclones$frac1_A, 1)  + ifelse(is_subclonal_min, subclones$nMin2_A, 0) * ifelse(is_subclonal_min, subclones$frac2_A, 0)
-  #segment_states_tot = (subclones$nMaj1_A+subclones$nMin1_A) * ifelse(is_subclonal_maj, subclones$frac1_A, 1) + ifelse(is_subclonal_maj, subclones$nMaj2_A+subclones$nMin2_A, 0) * ifelse(is_subclonal_maj, subclones$frac2_A, 0)
-
-  segment_states_min = subclones$nMin1_A * ifelse(is_subclonal_min, subclones$frac1_A, 1) + ifelse(is_subclonal_min, subclones$nMin2_A, 0) * ifelse(is_subclonal_min, subclones$frac2_A, 0)
-  segment_states_maj = subclones$nMaj1_A * ifelse(is_subclonal_maj, subclones$frac1_A, 1) + ifelse(is_subclonal_maj, subclones$nMaj2_A, 0) * ifelse(is_subclonal_maj, subclones$frac2_A, 0)
-  segment_states_tot = segment_states_maj + segment_states_min
-
-  # Determine which SNPs are on which chromosome, to be used as a proxy for chromosome size in the plots
-  chr.segs = lapply(1:length(chr.names), function(ch) { which(BAFvals$Chromosome == chr.names[ch]) })
-
-  # Plot subclonal copy number as mixtures of two states
-  png(filename = paste(output.gw.figures.prefix, "_average.png", sep = ""), width = 2000, height = 500, res = 200)
-  create.bb.plot.average(bafsegmented = BAFvals,
-                         ploidy = ploidy,
-                         rho = rho,
-                         goodnessOfFit = goodness,
-                         pos_min = pos_min,
-                         pos_max = pos_max,
-                         segment_states_min = segment_states_min,
-                         segment_states_tot = segment_states_tot,
-                         chr.segs = chr.segs,
-                         chr.names = chr.names,
-                         tumourname = tumourname)
-  dev.off()
-
-  # Plot subclonal copy number as two separate states
-  png(filename = paste(output.gw.figures.prefix, "_subclones.png", sep = ""), width = 2000, height = 500, res = 200)
-  create.bb.plot.subclones(bafsegmented = BAFvals,
-                           subclones = subclones,
-                           ploidy = ploidy,
-                           rho = rho,
-                           goodnessOfFit = goodness,
-                           pos_min = pos_min,
-                           pos_max = pos_max,
-                           subcl_min = subcl_min,
-                           subcl_max = subcl_max,
-                           is_subclonal = is_subclonal,
-                           is_subclonal_maj = is_subclonal_maj,
-                           is_subclonal_min = is_subclonal_min,
-                           chr.segs = chr.segs,
-                           chr.names = chr.names,
-                           tumourname = tumourname)
-  dev.off()
-}
 
 #' Load the rho and psi estimates from a file.
 #' @noRd
@@ -774,52 +660,6 @@ load.rho.psi.file = function(rho.psi.file) {
   return(list(rho = rho, psit = psit, goodness = goodness))
 }
 
-#' Collapse a BAFsegmented file into segment start and end points
-#'
-#' This function looks through the BAFsegmented for stretches of equal
-#' BAFseg and records the start and end coordinates in a data.frame
-#' @param bafsegmented The BAFsegmented output from segmentation
-#' @return A data.frame with columns chromosome, start and end
-#' @author sd11
-#' @noRd
-collapse_bafsegmented_to_segments = function(bafsegmented) {
-  segments_collapsed = data.frame()
-  for (chrom in unique(bafsegmented$Chromosome)) {
-    bafsegmented_chrom = bafsegmented[bafsegmented$Chromosome == chrom,]
-    segments = rle(bafsegmented_chrom$BAFseg)
-    startpoint = 1
-    for (i in 1:length(segments$lengths)) {
-      endpoint = startpoint + segments$lengths[i] - 1
-      segments_collapsed = rbind(segments_collapsed,
-                                 data.frame(chromosome = chrom, start = bafsegmented_chrom$Position[startpoint], end = bafsegmented_chrom$Position[endpoint]))
-      startpoint = endpoint + 1
-    }
-  }
-  return(segments_collapsed)
-}
 
-#' Function to make additional figures
-#'
-#' @param samplename Name of the sample for the plot title
-#' @param logr_file File containing all logR data
-#' @param bafsegmented_file File containing the BAFsegmented data
-#' @param logrsegmented_file File with the logRsegmented data
-#' @param allelecounts_file Optional file with raw allele counts (Default: NULL)
-#' @author sd11
-#' @export
-make_posthoc_plots = function(samplename, logr_file, bafsegmented_file, logrsegmented_file, allelecounts_file = NULL) {
-  # Make some post-hoc plots
-  logr = Battenberg::read_table_generic(logr_file)
-  bafsegmented = as.data.frame(Battenberg::read_table_generic(bafsegmented_file))
-  logrsegmented = as.data.frame(Battenberg::read_table_generic(logrsegmented_file, header = F))
-  colnames(logrsegmented) = c("Chromosome", "Position", "logRseg")
-  outputfile = paste0(samplename, "_alleleratio.png")
-  allele_ratio_plot(samplename = samplename, logr = logr, bafsegmented = bafsegmented, logrsegmented = logrsegmented, outputfile = outputfile, max.plot.cn = 8)
 
-  if (!is.null(allelecounts_file)) {
-    allelecounts = as.data.frame(Battenberg::read_table_generic(allelecounts_file))
-    outputfile = paste0(samplename, "_coverage.png")
-    coverage_plot(samplename, allelecounts, outputfile)
-  }
-}
 

@@ -135,7 +135,8 @@ create_baf_plot <- function(BAFoutputchr, samplename, chr, output_png, bkps_chro
     scale_x_continuous(limits = c(min(BAFoutputchr$PositionMb), max(BAFoutputchr$PositionMb)), expand = c(0.02, 0.02)) +
     scale_y_continuous(limits = c(-0.05, 1.05), breaks = seq(0, 1, by = 0.2)) +
     labs(
-      title = paste0(samplename, ", chromosome ", chr),
+
+      title = paste0(samplename, ", chromosome ", sub("^chr", "", chr)),
       x = "Position (Mb)",
       y = "BAF (phased)"
     ) +
@@ -159,7 +160,7 @@ create_baf_plot <- function(BAFoutputchr, samplename, chr, output_png, bkps_chro
   }
 
   # Save the plot
-  output_path <- paste0(output_png, "segment_chr", chr, ".png")
+  output_path <- paste0(output_png, "segment_chr", sub("^chr", "", chr), ".png")
   ggsave(output_path, plot = p, width = 20, height = 5, dpi = 500)
 }
 
