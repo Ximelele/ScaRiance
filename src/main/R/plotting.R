@@ -44,7 +44,7 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
   }
 
   # Save the plot with improved height - KEY CHANGES HERE
-  output_path <- paste0(output_png, "RAFseg_chr", chr, ".png")
+  output_path <- paste0(output_png, "RAFseg_chr", sub("^chr", "", chr), ".png")
   # Increase height to at least 8 inches, and maintain wider width for chromosome
   ggsave(output_path, plot = p, width = 20, height = 5, dpi = 500)
 }
