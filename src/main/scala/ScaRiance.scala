@@ -49,7 +49,22 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
       runRcode(plots)
     })
 
+    val cnv_plot = Seq(
+      "Rscript",
+      "-e",
+      s"""
+                              source("/app/ScalaBattenberg/src/main/R/plotting.R")
 
+                              create_cnv_plot(
+                                cnv_file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
+                                output_png = "$ploting_prefix",
+                                baf_file = "${utils.impute_directory}/${utils.tumourName}_heterozygousMutBAFs_haplotyped.txt"
+
+                              )
+                              """
+    )
+
+    runRcode(cnv_plot)
     spark.stop()
   }
 
@@ -132,7 +147,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                   """
     )
 
-    //    runRcode(cmd_fit_copy_number)
+        runRcode(cmd_fit_copy_number)
 
     // add sublonal
     val call_subclones = Seq(
@@ -147,7 +162,6 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                         logr.file = "$logr_file",
                         rho.psi.file = "${utils.working_directory}/${utils.tumourName}_rho_and_psi.txt",
                         output.file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
-                        output.gw.figures.prefix= "${utils.plots_directory}/${utils.tumourName}_BattenbergProfile",
                         masking_output_file="${utils.plots_directory}/${utils.tumourName}_segment_masking_details.txt",
                         chr_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
 
@@ -155,7 +169,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                       """
     )
 
-    //    runRcode(call_subclones)
+        runRcode(call_subclones)
 
 
   }

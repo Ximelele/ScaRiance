@@ -1,4 +1,9 @@
-library(ggplot2)  # Note: the correct package name is ggplot2, not ggplot
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(viridis)
+library(gtools)
+
 create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, chr, output_png) {
   # Prepare data
   BAFoutputchr$PositionMb <- BAFoutputchr$Position / 1e6
@@ -157,6 +162,92 @@ create_baf_plot <- function(BAFoutputchr, samplename, chr, output_png, bkps_chro
   output_path <- paste0(output_png, "segment_chr", chr, ".png")
   ggsave(output_path, plot = p, width = 20, height = 5, dpi = 500)
 }
+
+
+
+
+
+
+create_cnv_plot <- function(cnv_file, baf_file, output_png) {
+  # 1. Load CNV
+  cnv <- read_tsv(cnv_file,
+                  col_types = cols(
+                    Chromosome = col_character(),
+                    Start.Pos = col_double(),
+                    End.Pos = col_double(),
+                    BAF = col_double(),
+                    Total.Copy.Number = col_double()
+                  )) %>%
+    mutate(
+      Chr = Chromosome,
+      Start = Start.Pos,
+      End = End.Pos,
+      StartMb = Start.Pos / 1e6,
+      EndMb = End.Pos / 1e6
+    )
+
+  # 2. Load BAF
+  baf_raw <- read_tsv(baf_file)
+  baf_col <- setdiff(names(baf_raw), c("Chromosome", "Position"))[1]
+  baf <- baf_raw %>%
+    rename(Chr = Chromosome, BAF = !!baf_col) %>%
+    mutate(
+      Start = Position,
+      End = Position,
+      PositionMb = Position / 1e6
+    )
+
+  # 3. Chromosome ordering
+  all_chr_levels <- mixedsort(unique(c(cnv$Chr, baf$Chr)))
+  cnv$Chr <- factor(cnv$Chr, levels = all_chr_levels)
+  baf$Chr <- factor(baf$Chr, levels = all_chr_levels)
+
+  # 4. Plot
+  p <- ggplot() +
+    # Raw BAF dots
+    geom_point(data = baf, aes(x = PositionMb, y = BAF),
+               color = "lavender", size = 0.3, alpha = 0.3) +
+    # Colored BAF segment line (same y = BAF)
+    geom_segment(data = cnv,
+                 aes(x = StartMb, xend = EndMb,
+                     y = BAF, yend = BAF,
+                     color = Total.Copy.Number),
+                 size = 1.2, alpha = 0.95) +
+    facet_wrap(~ Chr, scales = "free_x", ncol = 4) +
+    scale_color_viridis(
+      option = "plasma", direction = -1,
+      name = "Total CN",
+      limits = c(floor(min(cnv$Total.Copy.Number)), ceiling(max(cnv$Total.Copy.Number))),
+      guide = guide_colorbar(title.position = "bottom", title.hjust = 0.5,
+                             barwidth = 15, barheight = 0.5)
+    ) +
+    labs(
+      title = "CNV per chromsome"
+    ) +
+    theme_bw(base_size = 12) +
+    theme(
+      plot.title = element_text(size = 16, face = "bold", hjust = 0.5, margin = margin(t = 10, b = 10)),
+      axis.title = element_text(size = 12, face = "bold"),
+      axis.text = element_text(size = 9),
+      strip.text = element_text(size = 10, face = "bold"),
+      panel.spacing = unit(2, "lines"),
+      legend.title = element_text(size = 10),
+      legend.text = element_text(size = 8),
+      legend.position = "bottom",
+      legend.box = "horizontal"
+    )
+
+  # 5. Save
+  ggsave(
+    filename = paste0(output_png, "cnv_per_chrom.png"),
+    plot = p,
+    width = 14,
+    height = 16,
+    dpi = 300
+  )
+}
+
+
 
 
 
