@@ -8,14 +8,14 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
 
   # Create the plot
   p <- ggplot(BAFoutputchr, aes(x = PositionMb)) +
-    geom_point(aes(y = BAF), color = "red", size = 0.5, alpha = 0.7) +
-    geom_point(aes(y = tempBAFsegm), color = "green", size = 0.3, alpha = 0.7) +
+    geom_point(aes(y = BAF), color = "brown3", size = 0.5, alpha = 0.7) +
+    geom_point(aes(y = tempBAFsegm), color = "darkolivegreen2", size = 0.3, alpha = 0.7) +
     labs(
       title = paste0(samplename, ", chromosome ", chr),
       x = "Position (Mb)",
       y = "BAF (phased)"
     ) +
-    theme_minimal(base_size = 14) +
+    theme_classic(base_size = 14) +
     theme(
       plot.title = element_text(size = 20, face = "bold"),
       axis.title = element_text(size = 16),
