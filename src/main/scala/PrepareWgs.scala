@@ -194,9 +194,6 @@ case class PrepareWgs():
 
     joinedDf = joinedDf.withColumn("selector", (rand() * 2).cast("int"))
 
-    //    val log2UDF = udf((value: Double) => {
-    //      scala.math.log(value) / scala.math.log(2.0)
-    //    }, DoubleType)
 
 
     joinedDf = joinedDf.withColumn("normalBAF",

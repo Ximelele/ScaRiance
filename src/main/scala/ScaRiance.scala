@@ -3,6 +3,7 @@ import org.apache.spark.sql.SparkSession
 
 import scala.collection.parallel.CollectionConverters.*
 
+
 case class ScaRiance(control_file: String, tumour_file: String, skip_allele_counting: Boolean = false, skip_imputation: Boolean = false, skip_segmentation: Boolean = false):
 
   private val utils = Utils()
@@ -30,6 +31,23 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
       segmentation()
     }
 
+    val ploting_prefix = s"${utils.plots_directory}/${utils.tumourName}_"
+    this.utils.chromosomeNames.foreach(chrom => {
+      val plots = Seq(
+        "Rscript",
+        "-e",
+        s"""
+                              source("/app/ScalaBattenberg/src/main/R/plotting.R")
+
+                              plot.haplotype.data(
+                                haplotyped.baf.file = "${utils.impute_directory}/${utils.tumourName}_chr${chrom.stripPrefix("chr")}_heterozygousMutBAFs_haplotyped.txt",
+                                imageFileName = "${ploting_prefix}_chr${chrom.stripPrefix("chr")}_heterozygousData.png",
+                                chrom = "$chrom")
+                              )
+                              """
+      )
+    })
+
     spark.stop()
   }
 
@@ -47,20 +65,22 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     utils.concatenateBAFfiles(spark = spark, inputStart = s"${utils.impute_directory}/${utils.tumourName}_impute_output_")
   }
 
+  def runRcode(cmd: Seq[String]): Unit = {
+    import scala.sys.process.*
+    val exitCode = cmd.!
+
+    // Check the exit code
+    if (exitCode == 0) {
+      println("R script executed successfully")
+    } else {
+      println(s"R script failed with exit code $exitCode")
+      System.exit(1)
+    }
+  }
+
   def segmentation(): Unit = {
 
-    def runRcode(cmd: Seq[String]): Unit = {
-      import scala.sys.process.*
-      val exitCode = cmd.!
 
-      // Check the exit code
-      if (exitCode == 0) {
-        println("R script executed successfully")
-      } else {
-        println(s"R script failed with exit code $exitCode")
-        System.exit(1)
-      }
-    }
 
     // add print segmenting
     val cmd_segmentation = Seq(
@@ -132,6 +152,10 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     )
 
     runRcode(call_subclones)
+
+
+
+
   }
 
 
