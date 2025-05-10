@@ -30,7 +30,6 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
       axis.text.x = element_text(size = 10, face = "bold")
     ) +
     # Set a fixed aspect ratio to prevent squashing
-    coord_fixed(ratio = 250/1.2)  # Adjust this ratio as needed
 
   # Add vertical lines for breakpoints if provided
   if (!is.null(bkps_chrom)) {
