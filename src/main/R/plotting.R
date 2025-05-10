@@ -28,8 +28,9 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
       plot.margin = margin(t = 20, r = 20, b = 40, l = 20),
       # Keep x-axis text visible
       axis.text.x = element_text(size = 10, face = "bold")
-    ) +
+    )
     # Set a fixed aspect ratio to prevent squashing
+
 
   # Add vertical lines for breakpoints if provided
   if (!is.null(bkps_chrom)) {
