@@ -1,15 +1,8 @@
 source("/app/ScalaBattenberg/src/main/R/fastPCF.R")
+source("/app/ScalaBattenberg/src/main/R/plotting.R")
 library("readr")
 
 
-#' Helper function to adjust the BAF segmented values. By default the segmentation
-#' takes the mean BAFphased for each segment, but that doesn't work very well with
-#' outliers (i.e. badly phased regions). This function is then called to adjust
-#' the segmented BAF. By default this now takes the median
-#' @param baf_chrom A data frame with columns BAFphased and BAFseg. BAFseg will be overwritten.
-#' @return A data frame with columns BAFphased and BAFseg.
-#' @author sd11
-#' @noRd
 adjustSegmValues <- function(baf_chrom) {
   segments <- rle(baf_chrom$BAFseg)
   for (i in 1:length(segments$lengths)) {
@@ -23,22 +16,7 @@ adjustSegmValues <- function(baf_chrom) {
 }
 
 
-#' Segment BAF, with the possible inclusion of structural variant breakpoints
-#'
-#' This function breaks the genome up into chromosomes, possibly further when SV breakpoints
-#' are provided, and runs PCF on each to segment the chromosomes independently.
-#' @param samplename Name of the sample, which is used to name output figures
-#' @param inputfile String that points to the output from the \code{combine.baf.files} function. This contains the phased SNPs with their BAF values
-#' @param outputfile String where the segmentation output will be written
-#' @param prior_breakpoints_file String that points to a file with prior breakpoints (from SVs for example) with chromosome and position columns (Default: NULL)
-#' @param gamma The gamma parameter controls the size of the penalty of starting a new segment during segmentation. It is therefore the key parameter for controlling the number of segments (Default 10)
-#' @param kmin Kmin represents the minimum number of probes/SNPs that a segment should consist of (Default 3)
-#' @param phasegamma Gamma parameter used when correcting phasing mistakes (Default 3)
-#' @param phasekmin Kmin parameter used when correcting phasing mistakes (Default 3)
-#' @param no_segmentation Do not perform segmentation. This step will switch the haplotype blocks, but then just takes the mean BAFphased as BAFsegm
-#' @param calc_seg_baf_option Various options to recalculate the BAF of a segment. Options are: 1 - median, 2 - mean, 3 - ifelse median==0 or 1, median, mean. (Default: 3)
-#' @author sd11
-#' @export
+
 segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoints_file = NULL, gamma = 10, phasegamma = 3, kmin = 3, phasekmin = 3, no_segmentation = F, calc_seg_baf_option = 3) {
   # Function that takes SNPs that belong to a single segment and looks for big holes between
   # each pair of SNPs. If there is a big hole it will add another breakpoint to the breakpoints data.frame
@@ -138,8 +116,7 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
 
     BAF = BAFrawchr[row.indices, 2]
     pos = BAFrawchr[row.indices, 1]
-    # names(BAF) = rownames(BAFrawchr[row.indices])
-    # names(pos) = rownames(BAFrawchr[row.indices])
+
 
     sdev <- getMad(ifelse(BAF < 0.5, BAF, 1 - BAF), k = 25)
     # Standard deviation is not defined for a single value
@@ -228,6 +205,30 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
       BAFoutput_preseg = run_pcf(BAFrawchr, breakpoints_chrom$start[r], breakpoints_chrom$end[r], phasekmin, phasegamma, kmin, gamma, no_segmentation)
       BAFoutputchr = rbind(BAFoutputchr, BAFoutput_preseg)
     }
+    png(filename = paste("/app/ScalaBattenberg/Lynch.1121.03.N.bam/Plots/",samplename,"_RAFseg_chr",chr,".png",sep=""), width = 2000, height = 1000, res = 200)
+    create.segmented.plot(chrom.position=BAFoutputchr$Position/1000000,
+                          points.red=BAFoutputchr$BAF,
+                          points.green=BAFoutputchr$tempBAFsegm,
+                          x.min=min(BAFoutputchr$Position)/1000000,
+                          x.max=max(BAFoutputchr$Position)/1000000,
+                          title=paste(samplename,", chromosome ", chr, sep=""),
+                          xlab="Position (Mb)",
+                          ylab="BAF (phased)",
+                          prior_bkps_pos=bkps_chrom$position/1000000)
+    dev.off()
+    png(filename = paste("/app/ScalaBattenberg/Lynch.1121.03.N.bam/Plots/",samplename,"_segment_chr",chr,".png",sep=""), width = 2000, height = 1000, res = 200)
+    create.baf.plot(chrom.position=BAFoutputchr$Position/1000000,
+                    points.red.blue=BAFoutputchr$BAF,
+                    plot.red=BAFoutputchr$tempBAFsegm>0.5,
+                    points.darkred=BAFoutputchr$BAFseg,
+                    points.darkblue=1-BAFoutputchr$BAFseg,
+                    x.min=min(BAFoutputchr$Position)/1000000,
+                    x.max=max(BAFoutputchr$Position)/1000000,
+                    title=paste(samplename,", chromosome ", chr, sep=""),
+                    xlab="Position (Mb)",
+                    ylab="BAF (phased)",
+                    prior_bkps_pos=bkps_chrom$position/1000000)
+    dev.off()
 
 
     BAFoutputchr$BAFphased = ifelse(BAFoutputchr$tempBAFsegm > 0.5, BAFoutputchr$BAF, 1 - BAFoutputchr$BAF)

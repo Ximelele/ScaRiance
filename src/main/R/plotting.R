@@ -1,4 +1,15 @@
 library(ggplot2)  # Note: the correct package name is ggplot2, not ggplot
+create.segmented.plot = function(chrom.position, points.red, points.green, x.min, x.max, title, xlab, ylab, prior_bkps_pos=NULL) {
+  par(mar = c(5,5,5,0.5), cex = 0.4, cex.main=3, cex.axis = 2, cex.lab = 2)
+  plot(c(x.min,x.max), c(0,1), pch=".", type="n", main=title, xlab=xlab, ylab=ylab)
+  points(chrom.position, points.red, pch=".", col="red", cex=2)
+  points(chrom.position, points.green, pch=19, cex=0.5, col="green")
+  if (!is.null(prior_bkps_pos)) {
+    for (i in 1:length(prior_bkps_pos)) {
+      abline(v=prior_bkps_pos[i])
+    }
+  }
+}
 
 create.haplotype.plot <- function(chrom.position, points.blue, points.red, x.min, x.max, title, xlab, ylab, point.size = 1, cytoband_data, alpha = 0.7) {  # Added alpha parameter with default value
   data <- data.frame(
