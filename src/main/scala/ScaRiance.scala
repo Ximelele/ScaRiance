@@ -84,8 +84,8 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
   def segmentation(): Unit = {
 
 
-
     // add print segmenting
+    val ploting_prefix = s"${utils.plots_directory}/${utils.tumourName}_"
     val cmd_segmentation = Seq(
       "Rscript",
       "-e",
@@ -96,6 +96,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                 samplename = "${utils.tumourName}",
                 inputfile = "${utils.impute_directory}/${utils.tumourName}_heterozygousMutBAFs_haplotyped.txt",
                 outputfile = "${utils.working_directory}/${utils.tumourName}.BAFsegmented.txt",
+                output_png="$ploting_prefix"
               )
               """
     )
@@ -110,7 +111,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     val input_baf = s"${utils.working_directory}/${utils.tumourName}_mutantBAF.tab"
 
     val outputfile_prefix = s"${utils.working_directory}/${utils.tumourName}_"
-    val ploting_prefix = s"${utils.plots_directory}/${utils.tumourName}_"
+
     val log_segment_file = s"${utils.impute_directory}/${utils.tumourName}.logRsegmented.txt"
     // add print fit copy
     val cmd_fit_copy_number = Seq(
@@ -131,7 +132,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                   """
     )
 
-    runRcode(cmd_fit_copy_number)
+    //    runRcode(cmd_fit_copy_number)
 
     // add sublonal
     val call_subclones = Seq(
@@ -154,9 +155,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                       """
     )
 
-    runRcode(call_subclones)
-
-
+    //    runRcode(call_subclones)
 
 
   }

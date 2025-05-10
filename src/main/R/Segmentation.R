@@ -17,7 +17,7 @@ adjustSegmValues <- function(baf_chrom) {
 
 
 
-segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoints_file = NULL, gamma = 10, phasegamma = 3, kmin = 3, phasekmin = 3, no_segmentation = F, calc_seg_baf_option = 3) {
+segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoints_file = NULL, gamma = 10, phasegamma = 3, kmin = 3, phasekmin = 3, no_segmentation = F, calc_seg_baf_option = 3,output_png) {
   # Function that takes SNPs that belong to a single segment and looks for big holes between
   # each pair of SNPs. If there is a big hole it will add another breakpoint to the breakpoints data.frame
   addin_bigholes = function(breakpoints, positions, chrom, startpos, maxsnpdist) {
@@ -205,17 +205,11 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
       BAFoutput_preseg = run_pcf(BAFrawchr, breakpoints_chrom$start[r], breakpoints_chrom$end[r], phasekmin, phasegamma, kmin, gamma, no_segmentation)
       BAFoutputchr = rbind(BAFoutputchr, BAFoutput_preseg)
     }
-    png(filename = paste("/app/ScalaBattenberg/Lynch.1121.03.N.bam/Plots/",samplename,"_RAFseg_chr",chr,".png",sep=""), width = 2000, height = 1000, res = 200)
-    create.segmented.plot(chrom.position=BAFoutputchr$Position/1000000,
-                          points.red=BAFoutputchr$BAF,
-                          points.green=BAFoutputchr$tempBAFsegm,
-                          x.min=min(BAFoutputchr$Position)/1000000,
-                          x.max=max(BAFoutputchr$Position)/1000000,
-                          title=paste(samplename,", chromosome ", chr, sep=""),
-                          xlab="Position (Mb)",
-                          ylab="BAF (phased)",
-                          prior_bkps_pos=bkps_chrom$position/1000000)
-    dev.off()
+    # output_png
+    # png(filename = paste("/app/ScalaBattenberg/Lynch.1121.03.N.bam/Plots/",samplename,"_RAFseg_chr",chr,".png",sep=""), width = 2000, height = 1000, res = 200)
+    create_segmented_plot(BAFoutputchr=BAFoutputchr,bkps_chrom = bkps_chrom,chr = chr,samplename=samplename,output_png=output_png)
+    # dev.off()
+
     png(filename = paste("/app/ScalaBattenberg/Lynch.1121.03.N.bam/Plots/",samplename,"_segment_chr",chr,".png",sep=""), width = 2000, height = 1000, res = 200)
     create.baf.plot(chrom.position=BAFoutputchr$Position/1000000,
                     points.red.blue=BAFoutputchr$BAF,
