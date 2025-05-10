@@ -40,7 +40,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                               source("/app/ScalaBattenberg/src/main/R/plotting.R")
 
                               plot.haplotype.data(
-                                haplotyped.baf.file = "${utils.impute_directory}/${utils.tumourName}_chr${chrom.toString.stripPrefix("chr")}_heterozygousMutBAFs_haplotyped.txt",
+                                haplotyped.baf.file = "${utils.impute_directory}/${utils.tumourName}_impute_output_chr${chrom.toString.stripPrefix("chr")}_heterozygousMutBAFs_haplotyped.txt",
                                 imageFileName = "${ploting_prefix}_chr${chrom.toString.stripPrefix("chr")}_heterozygousData.png",
                                 chrom = "${chrom.toString}")
                               )
