@@ -1,5 +1,5 @@
 library(ggplot2)  # Note: the correct package name is ggplot2, not ggplot
-create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, chr,output_png) {
+create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, chr, output_png) {
   # Prepare data
   BAFoutputchr$PositionMb <- BAFoutputchr$Position / 1e6
   if (!is.null(bkps_chrom)) {
@@ -10,28 +10,36 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
   p <- ggplot(BAFoutputchr, aes(x = PositionMb)) +
     geom_point(aes(y = BAF), color = "brown3", size = 0.5, alpha = 0.7) +
     geom_point(aes(y = tempBAFsegm), color = "darkolivegreen2", size = 0.3, alpha = 0.7) +
+    scale_x_continuous(limits = c(min(BAFoutputchr$PositionMb), max(BAFoutputchr$PositionMb)), expand = c(0.02, 0.02)) +
+    scale_y_continuous(limits = c(-0.05, 1.05), breaks = seq(0, 1, by = 0.2)) +
     labs(
       title = paste0(samplename, ", chromosome ", chr),
       x = "Position (Mb)",
       y = "BAF (phased)"
     ) +
-    theme_classic(base_size = 14) +
+    coord_cartesian(clip = "off") +
+    theme_classic() +
     theme(
-      plot.title = element_text(size = 20, face = "bold"),
-      axis.title = element_text(size = 16),
-      axis.text = element_text(size = 14)
+      plot.title = element_text(size = 10, hjust = 0.5, color = "black", face = "bold"),
+      axis.title.x = element_text(size = 8, face = "bold"),
+      axis.title.y = element_text(size = 8, face = "bold"),
+      axis.text = element_text(size = 6, face = "bold"),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      plot.margin = margin(t = 20, r = 20, b = 40, l = 20)
     )
 
   # Add vertical lines for breakpoints if provided
   if (!is.null(bkps_chrom)) {
     p <- p + geom_vline(data = bkps_chrom, aes(xintercept = PositionMb),
-                        color = "blue", linetype = "dashed", alpha = 0.6)
+                        color = "black", linetype = "dashed", alpha = 0.6)
   }
 
-  # Save the plot
-  output_path <- paste0(output_png,"RAFseg_chr", chr, ".png")
-  ggsave(output_path, plot = p, width = 10, height = 5, dpi = 300)
+  # Save the plot with improved height
+  output_path <- paste0(output_png, "RAFseg_chr", chr, ".png")
+  ggsave(output_path, plot = p, width = 10, height = 6, dpi = 300)
 }
+
 create.haplotype.plot <- function(chrom.position, points.blue, points.red, x.min, x.max, title, xlab, ylab, point.size = 1, cytoband_data, alpha = 0.7) {  # Added alpha parameter with default value
   data <- data.frame(
     chrom.position = chrom.position,
