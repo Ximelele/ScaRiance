@@ -18,16 +18,19 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
       y = "BAF (phased)"
     ) +
     coord_cartesian(clip = "off") +
+    # Add fixed aspect ratio to maintain proportions
     theme_classic() +
     theme(
-      plot.title = element_text(size = 10, hjust = 0.5, color = "black", face = "bold"),
-      axis.title.x = element_text(size = 8, face = "bold"),
-      axis.title.y = element_text(size = 8, face = "bold"),
-      axis.text = element_text(size = 6, face = "bold"),
-      axis.text.x = element_blank(),
-      axis.ticks.x = element_blank(),
-      plot.margin = margin(t = 20, r = 20, b = 40, l = 20)
-    )
+      plot.title = element_text(size = 16, hjust = 0.5, color = "black", face = "bold"),
+      axis.title.x = element_text(size = 12, face = "bold"),
+      axis.title.y = element_text(size = 12, face = "bold"),
+      axis.text = element_text(size = 10, face = "bold"),
+      plot.margin = margin(t = 20, r = 20, b = 40, l = 20),
+      # Keep x-axis text visible
+      axis.text.x = element_text(size = 10, face = "bold")
+    ) +
+    # Set a fixed aspect ratio to prevent squashing
+    coord_fixed(ratio = 250/1.2)  # Adjust this ratio as needed
 
   # Add vertical lines for breakpoints if provided
   if (!is.null(bkps_chrom)) {
@@ -35,9 +38,10 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
                         color = "black", linetype = "dashed", alpha = 0.6)
   }
 
-  # Save the plot with improved height
+  # Save the plot with improved height - KEY CHANGES HERE
   output_path <- paste0(output_png, "RAFseg_chr", chr, ".png")
-  ggsave(output_path, plot = p, width = 10, height = 6, dpi = 300)
+  # Increase height to at least 8 inches, and maintain wider width for chromosome
+  ggsave(output_path, plot = p, width = 10, height = 8, dpi = 300)
 }
 
 create.haplotype.plot <- function(chrom.position, points.blue, points.red, x.min, x.max, title, xlab, ylab, point.size = 1, cytoband_data, alpha = 0.7) {  # Added alpha parameter with default value
