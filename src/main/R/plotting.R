@@ -1,3 +1,4 @@
+library(ggplot)
 
 create.haplotype.plot <- function(chrom.position, points.blue, points.red, x.min, x.max, title, xlab, ylab, point.size = 1.5, cytoband_data) {
   data <- data.frame(
