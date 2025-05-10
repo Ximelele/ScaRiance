@@ -1,66 +1,131 @@
 library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(scales)
 
-create.haplotype.plot <- function(chrom.position, points.blue, points.red, x.min, x.max, title, xlab, ylab, point.size = 1.5, cytoband_data) {
-  data <- data.frame(
-    chrom.position = chrom.position,
-    points.light = points.blue,
-    points.dark = points.red
-  )
+#' Create a haplotype‐BAF scatter plot
+#'
+#' @param df A data.frame with columns: chrom.position, baf (0–1), and optionally group (“blue” or “red”).
+#' @param chrom Character, chromosome label for the title.
+#' @param xlim Numeric(2), min and max position (bp).
+#' @param ylim Numeric(2), y‐axis limits (default c(-0.1,1.1)).
+#' @param colors Named vector of length 2, e.g. c(blue="#1874CD", red="#CD5555").
+#' @param point_size Numeric, point size.
+#' @param cytoband_data Optional data.frame with columns: chrom, start, end, gieStain.
+#'        Will be shaded in the background.
+#' @param show_x_axis Logical, whether to show x‐axis text & ticks.
+#' @return A ggplot2 object.
+#' @export
+create_haplotype_plot <- function(
+  df,
+  chrom,
+  xlim,
+  ylim = c(-0.1, 1.1),
+  colors = c(blue = "deepskyblue4", red = "brown2"),
+  point_size = 1.5,
+  cytoband_data = NULL,
+  show_x_axis = FALSE
+) {
+  # reshape to long form
+  df_long <- df %>%
+    select(chrom.position, blue = points.blue, red = points.red) %>%
+    pivot_longer(-chrom.position, names_to = "group", values_to = "baf")
 
-  plot <- ggplot(data) +
-    geom_point(aes(x = chrom.position, y = points.blue), color = "deepskyblue4", size = point.size) +
-    geom_point(aes(x = chrom.position, y = points.red), color = "brown2", size = point.size) +
-    scale_x_continuous(limits = c(x.min, x.max), expand = c(0.02, 0.02)) +  # Extra padding for x-axis
-    scale_y_continuous(limits = c(-0.1, 1.1), breaks = seq(0, 1, by = 0.2)) +  # Extend y-axis slightly below and above
-    labs(title = title, x = xlab, y = ylab) +
-    coord_cartesian(clip = "off") +  # Prevent clipping
-    theme_classic() +
-    theme(
-      plot.title = element_text(size = 10, hjust = 0.5, color = "black", face = "bold"),
-      axis.title.x = element_text(size = 8, face = "bold"),
-      axis.title.y = element_text(size = 8, face = "bold"),
-      axis.text = element_text(size = 6, face = "bold"),
-      axis.text.x = element_blank(),  # Hide x-axis text
-      axis.ticks.x = element_blank(),  # Hide x-axis ticks
-      plot.margin = margin(t = 20, r = 20, b = 40, l = 20)  # Increase bottom margin
-    )
+  p <- ggplot()
 
-  return(plot)
-}
-
-plot.haplotype.data <- function(haplotyped.baf.file, imageFileName, chrom ) {
-  mut_data <- read.table(haplotyped.baf.file, sep = "\t", header = TRUE)
-
-  # Read and filter cytoband data for the relevant chromosome
-  # cyto_data <- read_cytoband_data(cytoband_file, paste0("chr", chrom))
-
-  # Explicitly set x_min to 0 and use the maximum end of cytoband data for x_max
-  if (nrow(mut_data) > 0) {
-    x_min = min(mut_data$Position,na.rm=T)
-    x_max = max(mut_data$Position,na.rm=T)
-  } else {
-    x_min = 1
-    x_max = 2
+  # optional cytoband shading
+  if (!is.null(cytoband_data)) {
+    cyto_chr <- cytoband_data %>% filter(chrom == paste0("chr", chrom))
+    p <- p +
+      geom_rect(
+        data = cyto_chr,
+        aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf, fill = gieStain),
+        inherit.aes = FALSE, alpha = 0.15
+      ) +
+      scale_fill_manual(
+        values = c(gpos = "grey80", gneg = "white", stalk = "grey90"),
+        guide = "none"
+      )
   }
 
-  # Dynamically calculate point size
-  point.size <- if (nrow(mut_data) > 0) max(0.5, min(3, 1000 / nrow(mut_data))) else 1.5
-
-  haplotype_plot <- create.haplotype.plot(
-    chrom.position = mut_data$Position,
-    points.blue = mut_data[, 3],
-    points.red = 1 - mut_data[, 3],
-    x.min = x_min,
-    x.max = x_max,
-    title = paste("Chromosome", chrom, sep = " "),
-    xlab = "pos",
-    ylab = "BAF",
-    point.size = point.size,
-  )
-
-  # Save the plot as a PNG file
-  ggsave(filename = imageFileName, plot = haplotype_plot, width = 20, height = 5, dpi = 500)
+  p +
+    geom_point(
+      data = df_long,
+      aes(x = chrom.position, y = baf, color = group),
+      size = point_size
+    ) +
+    scale_color_manual(
+      values = colors,
+      labels = c(blue = "BAF", red = "1 – BAF"),
+      name = NULL
+    ) +
+    scale_x_continuous(
+      limits = xlim,
+      expand = expansion(0.02),
+      labels = label_number(scale = 1e-6, suffix = " Mb")
+    ) +
+    scale_y_continuous(limits = ylim, breaks = seq(0, 1, by = 0.2)) +
+    labs(
+      title = paste("Chromosome", chrom),
+      x = "Position",
+      y = "BAF"
+    ) +
+    coord_cartesian(clip = "off") +
+    theme_classic(base_size = 10) +
+    theme(
+      plot.title    = element_text(face = "bold", hjust = 0.5),
+      axis.title    = element_text(face = "bold", size = 8),
+      axis.text     = element_text(size = 6, face = "bold"),
+      axis.text.x   = if (show_x_axis) element_text() else element_blank(),
+      axis.ticks.x  = if (show_x_axis) element_line() else element_blank(),
+      plot.margin   = margin(t = 20, r = 20, b = 40, l = 20)
+    )
 }
 
+#' Read haplotype BAF, generate and save plot
+#'
+#' @param baf_file Path to tab‐delimited BAF file with header, must contain Position and BAF.
+#' @param out_file Path to save the PNG.
+#' @param chrom Chromosome label (numeric or character).
+#' @param cytoband_data Optional cytoband data.frame.
+#' @export
+plot_haplotype_data <- function(
+  baf_file,
+  out_file,
+  chrom,
+  cytoband_data = NULL
+) {
+  df <- read.table(baf_file, header = TRUE, sep = "\t") %>%
+    rename(points.blue = 3) %>%           # assume col3 is BAF
+    mutate(points.red = 1 - points.blue)
 
+  # dynamic limits & point size
+  if (nrow(df) > 0) {
+    xlim <- range(df$Position, na.rm = TRUE)
+    psize <- max(0.5, min(3, 1000 / nrow(df)))
+  } else {
+    xlim <- c(1, 2)
+    psize <- 1.5
+  }
 
+  p <- create_haplotype_plot(
+    df = df %>% rename(chrom.position = Position),
+    chrom = chrom,
+    xlim = xlim,
+    colors = c(blue = "#1874CD", red = "#CD5555"),
+    point_size = psize,
+    cytoband_data = cytoband_data,
+    show_x_axis = TRUE
+  )
+
+  # save with ragg for crispness (optional)
+  ggsave(
+    filename = out_file,
+    plot     = p,
+    width    = 20,
+    height   = 5,
+    dpi      = 500,
+    device   = ragg::agg_png
+  )
+}
+x
