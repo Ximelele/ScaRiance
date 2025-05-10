@@ -1,5 +1,3 @@
-library(ggplot)
-
 library(ggplot2)  # Note: the correct package name is ggplot2, not ggplot
 
 create.haplotype.plot <- function(chrom.position, points.blue, points.red, x.min, x.max, title, xlab, ylab, point.size = 1, cytoband_data, alpha = 0.7) {  # Added alpha parameter with default value
