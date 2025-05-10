@@ -9,7 +9,7 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
   # Create the plot
   p <- ggplot(BAFoutputchr, aes(x = PositionMb)) +
     geom_point(aes(y = BAF), color = "brown3", size = 0.5, alpha = 0.7) +
-    geom_point(aes(y = tempBAFsegm), color = "darkolivegreen2", size = 0.3, alpha = 0.7) +
+    geom_point(aes(y = tempBAFsegm), color = "forestgreen", size = 0.3, alpha = 0.7) +
     scale_x_continuous(limits = c(min(BAFoutputchr$PositionMb), max(BAFoutputchr$PositionMb)), expand = c(0.02, 0.02)) +
     scale_y_continuous(limits = c(-0.05, 1.05), breaks = seq(0, 1, by = 0.2)) +
     labs(
@@ -41,7 +41,7 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
   # Save the plot with improved height - KEY CHANGES HERE
   output_path <- paste0(output_png, "RAFseg_chr", chr, ".png")
   # Increase height to at least 8 inches, and maintain wider width for chromosome
-  ggsave(output_path, plot = p, width = 10, height = 8, dpi = 300)
+  ggsave(output_path, plot = p, width = 20, height = 5, dpi = 500)
 }
 
 create.haplotype.plot <- function(chrom.position, points.blue, points.red, x.min, x.max, title, xlab, ylab, point.size = 1, cytoband_data, alpha = 0.7) {  # Added alpha parameter with default value
