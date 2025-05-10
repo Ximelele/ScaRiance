@@ -210,19 +210,28 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
     create_segmented_plot(BAFoutputchr=BAFoutputchr,bkps_chrom = bkps_chrom,chr = chr,samplename=samplename,output_png=output_png)
     # dev.off()
 
-    png(filename = paste("/app/ScalaBattenberg/Lynch.1121.03.N.bam/Plots/",samplename,"_segment_chr",chr,".png",sep=""), width = 2000, height = 1000, res = 200)
-    create.baf.plot(chrom.position=BAFoutputchr$Position/1000000,
-                    points.red.blue=BAFoutputchr$BAF,
-                    plot.red=BAFoutputchr$tempBAFsegm>0.5,
-                    points.darkred=BAFoutputchr$BAFseg,
-                    points.darkblue=1-BAFoutputchr$BAFseg,
-                    x.min=min(BAFoutputchr$Position)/1000000,
-                    x.max=max(BAFoutputchr$Position)/1000000,
-                    title=paste(samplename,", chromosome ", chr, sep=""),
-                    xlab="Position (Mb)",
-                    ylab="BAF (phased)",
-                    prior_bkps_pos=bkps_chrom$position/1000000)
-    dev.off()
+    # png(filename = paste("/app/ScalaBattenberg/Lynch.1121.03.N.bam/Plots/",samplename,"_segment_chr",chr,".png",sep=""), width = 2000, height = 1000, res = 200)
+    create_baf_plot(
+      BAFoutputchr = BAFoutputchr,
+      samplename = bkps_chrom,
+      chr = chr,
+      output_png = output_png,
+      bkps_chrom = bkps_chrom
+    )
+
+
+    # create_baf_plot(chrom.position=BAFoutputchr$Position/1000000,
+    #                 points.red.blue=BAFoutputchr$BAF,
+    #                 plot.red=BAFoutputchr$tempBAFsegm>0.5,
+    #                 points.darkred=BAFoutputchr$BAFseg,
+    #                 points.darkblue=1-BAFoutputchr$BAFseg,
+    #                 x.min=min(BAFoutputchr$Position)/1000000,
+    #                 x.max=max(BAFoutputchr$Position)/1000000,
+    #                 title=paste(samplename,", chromosome ", chr, sep=""),
+    #                 xlab="Position (Mb)",
+    #                 ylab="BAF (phased)",
+    #                 prior_bkps_pos=bkps_chrom$position/1000000)
+
 
 
     BAFoutputchr$BAFphased = ifelse(BAFoutputchr$tempBAFsegm > 0.5, BAFoutputchr$BAF, 1 - BAFoutputchr$BAF)

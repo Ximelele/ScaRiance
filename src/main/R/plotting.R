@@ -8,7 +8,7 @@ create_segmented_plot <- function(BAFoutputchr, bkps_chrom = NULL, samplename, c
 
   # Create the plot
   p <- ggplot(BAFoutputchr, aes(x = PositionMb)) +
-    geom_point(aes(y = BAF), color = "brown3", size = 0.5, alpha = 0.7) +
+    geom_point(aes(y = BAF), color = "brown3", size = 0.5, alpha = 0.5) +
     geom_point(aes(y = tempBAFsegm), color = "forestgreen", size = 0.3, alpha = 0.7) +
     scale_x_continuous(limits = c(min(BAFoutputchr$PositionMb), max(BAFoutputchr$PositionMb)), expand = c(0.02, 0.02)) +
     scale_y_continuous(limits = c(-0.05, 1.05), breaks = seq(0, 1, by = 0.2)) +
@@ -109,18 +109,55 @@ plot.haplotype.data <- function(haplotyped.baf.file, imageFileName, chrom ) {
 
 
 
-create.baf.plot = function(chrom.position, points.red.blue, plot.red, points.darkred, points.darkblue, x.min, x.max, title, xlab, ylab, prior_bkps_pos=NULL) {
-  par(mar = c(5,5,5,0.5), cex = 0.4, cex.main=3, cex.axis = 2, cex.lab = 2)
-  plot(c(x.min,x.max), c(0,1), pch=".", type = "n", main=title, xlab=xlab, ylab=ylab)
-  points(chrom.position, points.red.blue, pch=".", col=ifelse(plot.red, "red", "blue"), cex=2)
-  points(chrom.position, points.darkred, pch=19, cex=0.5, col="darkred")
-  points(chrom.position, points.darkblue, pch=19, cex=0.5, col="darkblue")
-  if (!is.null(prior_bkps_pos)) {
-    for (i in 1:length(prior_bkps_pos)) {
-      abline(v=prior_bkps_pos[i])
-    }
+library(ggplot2)
+
+create_baf_plot <- function(BAFoutputchr, samplename, chr, output_png, bkps_chrom = NULL) {
+  # Prepare data
+  BAFoutputchr$PositionMb <- BAFoutputchr$Position / 1e6
+  BAFoutputchr$plotColor <- ifelse(BAFoutputchr$tempBAFsegm > 0.5, "firebrick2", "dodgerblue3")
+  BAFoutputchr$BAFseg_flipped <- 1 - BAFoutputchr$BAFseg
+
+  if (!is.null(bkps_chrom)) {
+    bkps_chrom$PositionMb <- bkps_chrom$position / 1e6
   }
+
+  # Create plot
+  p <- ggplot(BAFoutputchr, aes(x = PositionMb)) +
+    geom_point(aes(y = BAF, color = plotColor), size = 0.5, alpha = 0.7) +
+    geom_point(aes(y = BAFseg), color = "orange2", size = 0.3, alpha = 0.7) +
+    geom_point(aes(y = BAFseg_flipped), color = "purple3", size = 0.3, alpha = 0.7) +
+    scale_color_manual(values = c("red" = "brown3", "blue" = "deepskyblue4")) +
+    scale_x_continuous(limits = c(min(BAFoutputchr$PositionMb), max(BAFoutputchr$PositionMb)), expand = c(0.02, 0.02)) +
+    scale_y_continuous(limits = c(-0.05, 1.05), breaks = seq(0, 1, by = 0.2)) +
+    labs(
+      title = paste0(samplename, ", chromosome ", chr),
+      x = "Position (Mb)",
+      y = "BAF (phased)"
+    ) +
+    coord_cartesian(clip = "off") +
+    theme_classic() +
+    theme(
+      plot.title = element_text(size = 10, hjust = 0.5, color = "black", face = "bold"),
+      axis.title.x = element_text(size = 8, face = "bold"),
+      axis.title.y = element_text(size = 8, face = "bold"),
+      axis.text = element_text(size = 6, face = "bold"),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      legend.position = "none",
+      plot.margin = margin(t = 20, r = 20, b = 40, l = 20)
+    )
+
+  # Add vertical lines for breakpoints if provided
+  if (!is.null(bkps_chrom)) {
+    p <- p + geom_vline(data = bkps_chrom, aes(xintercept = PositionMb),
+                        color = "black", linetype = "dashed", alpha = 0.6)
+  }
+
+  # Save the plot
+  output_path <- paste0(output_png, "segment_chr", chr, ".png")
+  ggsave(output_path, plot = p, width = 20, height = 5, dpi = 500)
 }
+
 
 
 
