@@ -46,7 +46,9 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                               )
                               """
       )
+      runRcode(plots)
     })
+
 
     spark.stop()
   }
@@ -64,6 +66,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     })
     utils.concatenateBAFfiles(spark = spark, inputStart = s"${utils.impute_directory}/${utils.tumourName}_impute_output_")
   }
+
 
   def runRcode(cmd: Seq[String]): Unit = {
     import scala.sys.process.*
