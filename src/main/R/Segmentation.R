@@ -227,6 +227,8 @@ segment.baf.phased = function(samplename, inputfile, outputfile, prior_breakpoin
     BAFoutput = rbind(BAFoutput, BAFoutputchr[, c(1:5)])
   }
   colnames(BAFoutput) = c("Chromosome", "Position", "BAF", "BAFphased", "BAFseg")
+  print("Printing segmentation")
+  print(BAFoutput)
   write.table(BAFoutput, outputfile, sep = "\t", row.names = F, col.names = T, quote = F)
 }
 

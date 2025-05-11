@@ -17,7 +17,8 @@ case class Impute():
     }
 
     impute_info = impute_info.filter(col("chrom") === chrom)
-
+    println("Impute info")
+    impute_info.show()
     impute_info
   }
 
@@ -65,7 +66,8 @@ case class Impute():
       .withColumn("rs_index", concat(lit("rs_index"), col("row_num").cast("string")))
 
     beagle_output = beagle_output.select(col("snp_index"), col("rs_index"), col("POS"), col("REF"), col("ALT"), col("allele1"), col("allele2"))
-
+    println("beagle_output")
+    beagle_output.show()
     utils.saveSingleFile(beagle_output, output_file, false)
   }
 
@@ -205,7 +207,8 @@ case class Impute():
     val chrom_prefix = s"sed -i 's/^chr//g' $outputFile"
 
     chrom_prefix.!
-
+    println("Generate Impute Input")
+    println(outputFile)
     outputFile
   }
 
@@ -228,7 +231,6 @@ case class Impute():
       s"overlap=$beagleoverlap",
       "impute=false").mkString(" ")
 
-    println(cmd)
 
     import scala.sys.process.*
 
