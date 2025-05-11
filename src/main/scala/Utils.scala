@@ -351,7 +351,7 @@ case class Utils():
       val comparison = Math.abs(chrXLengthPerRead - avgLengthPerRead)
       val result = comparison < 0.1
 
-      println("Patient is male: ",result)
+      println(s"Patient is male: ${result.toString}")
 
       result
 
