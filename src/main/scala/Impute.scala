@@ -239,7 +239,6 @@ case class Impute():
 
 
     val vcfbeagle_path = generateImputeInput(spark, chromosome, utils)
-    //    val vcfbeagle_path = s"${utils.impute_directory}/${utils.tumourName}_beagle5_input_chr${chromosome.stripPrefix("chr")}.txt"
     val outbeagle_path = s"${utils.impute_directory}/${utils.tumourName}_beagle5_output_chr${chromosome.stripPrefix("chr")}.txt"
 
 

@@ -1,64 +1,4 @@
 ####################################################################################################
-
-#' A helper function to split the genome into parts
-#' @param SNPpos A data.frame with a row for each SNP. First column is chromosome, second column position
-#' @noRd
-split_genome = function(SNPpos) {
-  # look for gaps of more than 1Mb and chromosome borders
-  holesOver1Mb = which(diff(SNPpos[, 2]) >= 1000000) + 1
-  chrBorders = which(diff(as.numeric(factor(SNPpos[, 1], levels = unique(SNPpos[, 1])))) != 0) + 1
-  holes = unique(sort(c(holesOver1Mb, chrBorders)))
-
-  # find which segments are too small
-  joincandidates = which(diff(c(0, holes, dim(SNPpos)[1])) < 200)
-
-  # if it's the first or last segment, just join to the one next to it, irrespective of chromosome and positions
-  while (1 %in% joincandidates) {
-    holes = holes[-1]
-    joincandidates = which(diff(c(0, holes, dim(SNPpos)[1])) < 200)
-  }
-  while ((length(holes) + 1) %in% joincandidates) {
-    holes = holes[-length(holes)]
-    joincandidates = which(diff(c(0, holes, dim(SNPpos)[1])) < 200)
-  }
-
-  while (length(joincandidates) != 0) {
-    # the while loop is because after joining, segments may still be too small..
-
-    startseg = c(1, holes)
-    endseg = c(holes - 1, dim(SNPpos)[1])
-
-    # for each segment that is too short, see if it has the same chromosome as the segments before and after
-    # the next always works because neither the first or the last segment is in joincandidates now
-    previoussamechr = SNPpos[endseg[joincandidates - 1], 1] == SNPpos[startseg[joincandidates], 1]
-    nextsamechr = SNPpos[endseg[joincandidates], 1] == SNPpos[startseg[joincandidates + 1], 1]
-
-    distanceprevious = SNPpos[startseg[joincandidates], 2] - SNPpos[endseg[joincandidates - 1], 2]
-    distancenext = SNPpos[startseg[joincandidates + 1], 2] - SNPpos[endseg[joincandidates], 2]
-
-    # if both the same, decide based on distance, otherwise if one the same, take the other, if none, just take one.
-    joins = ifelse(previoussamechr & nextsamechr,
-                   ifelse(distanceprevious > distancenext, joincandidates, joincandidates - 1),
-                   ifelse(nextsamechr, joincandidates, joincandidates - 1))
-
-    holes = holes[-joins]
-
-    joincandidates = which(diff(c(0, holes, dim(SNPpos)[1])) < 200)
-  }
-  # if two neighboring segments are selected, this may make bigger segments then absolutely necessary, but I'm sure this is no problem.
-
-  startseg = c(1, holes)
-  endseg = c(holes - 1, dim(SNPpos)[1])
-
-  chr = list()
-  for (i in 1:length(startseg)) {
-    chr[[i]] = startseg[i]:endseg[i]
-  }
-
-  return(chr)
-}
-
-####################################################################################################
 #' Helper function that calculates a t-statistic
 #' @noRd
 studentise <- function(sample_size, sample_mean, sample_SD, mu_pop)  # kjd 18-12-2013
@@ -198,27 +138,7 @@ calc_ln_likelihood_ratio <- function(LogR, BAFreq, BAF.size, BAF.mean, read_dept
 
 }
 
-####################################################################################################
 
-#' Calculate a two tailed binomial p-value
-#' @noRd
-calc_Pvalue_binomial_twotailed <- function(sample_count, sample_size, pop_proportion) # kjd 27-2-2014
-{
-  lower_tail_prob = pbinom(sample_count, sample_size, pop_proportion, lower.tail = TRUE)
-
-  if (lower_tail_prob < 0.5)
-  {
-    pval = 2 * lower_tail_prob
-
-  }else
-  {
-    pval = 2 * (1 - lower_tail_prob)
-
-  }
-
-  return(pval)
-
-}
 
 
 #' Helper function to estimate rho from a given copy number state and it's BAF. The LogR is not used.
@@ -954,31 +874,7 @@ calc_square_distance <- function(pt1, pt2) # kjd 27-2-2014
 
 }
 
-####################################################################################################
-#' This function is an alternative procedure for finding the optimum (psi, rho) pair.
-#' This function first finds all the find all the global optima,
-#' and then finds the centroid of this set of globla optima.
-#' Then we find the global optimum which is nearest to the centroid.
-#' (When the set of global optima is convex, we expect the selected optimum to be at the centroid.)
-#' @param d A distance matrix
-#' @param ref_seg_matrix The corresponding ref seg matrix that belongs to d
-#' @param ref_major The corresponding major allele values with d
-#' @param ref_minor The corresponding minor allele values with d
-#' @param s A segmented BAF/LogR data.frame from \code{get_segment_info}
-#' @param dist_choice Some distance metrics require adaptation of the data (i.e. log transform)
-#' @param minimise Boolean whether we're minimising or maximising
-#' @param new_bounds The rho/psi boundaries between we are searching for a solution. This is a named list with values psi_min, psi_max, rho_min, rho_max
-#' @param distancepng String where the sunrise distance plot will be saved
-#' @param gamma_param The platform gamma
-#' @param siglevel_BAF The level at which BAF becomes significant TODO: this option is no longer used
-#' @param maxdist_BAF TODO: this option is no longer used
-#' @param siglevel_LogR The p-value at which logR becomes significant when establishing whether a segment should be subclonal
-#' @param maxdist_LogR The maximum distance allowed as slack when establishing the significance. This allows for the case when a breakpoint is missed, the segment would then not automatically become subclonal
-#' @param allow100percent Boolean whether to allow for a 100"\%" cellularity solution
-#' @param uninformative_BAF_threshold The threshold above which BAF becomes uninformative
-#' @param read_depth TODO: this option is no longer used
-#' @return A list with fields optima_info_without_ref and optima_info
-#' @export
+
 find_centroid_of_global_minima <- function(d, ref_seg_matrix, ref_major, ref_minor, s, dist_choice, minimise, new_bounds, distancepng, gamma_param, siglevel_BAF, maxdist_BAF, siglevel_LogR, maxdist_LogR, allow100percent, uninformative_BAF_threshold, read_depth) # kjd 28-2-2014
 {
 

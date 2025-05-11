@@ -3,6 +3,7 @@ import org.apache.spark.sql.SparkSession
 
 import scala.collection.parallel.CollectionConverters.*
 
+
 case class ScaRiance(control_file: String, tumour_file: String, skip_allele_counting: Boolean = false, skip_imputation: Boolean = false, skip_segmentation: Boolean = false):
 
   private val utils = Utils()
@@ -30,6 +31,40 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
       segmentation()
     }
 
+    val ploting_prefix = s"${utils.plots_directory}/${utils.tumourName}_"
+    this.utils.chromosomeNames.foreach(chrom => {
+      val plots = Seq(
+        "Rscript",
+        "-e",
+        s"""
+                              source("/app/ScalaBattenberg/src/main/R/plotting.R")
+
+                              plot.haplotype.data(
+                                haplotyped.baf.file = "${utils.impute_directory}/${utils.tumourName}_impute_output_chr${chrom.toString.stripPrefix("chr")}_heterozygousMutBAFs_haplotyped.txt",
+                                imageFileName = "${ploting_prefix}chr${chrom.toString.stripPrefix("chr")}_heterozygousData.png",
+                                chrom = "${chrom.toString}"
+                              )
+                              """
+      )
+      runRcode(plots)
+    })
+
+    val cnv_plot = Seq(
+      "Rscript",
+      "-e",
+      s"""
+                              source("/app/ScalaBattenberg/src/main/R/plotting.R")
+
+                              create_cnv_plot(
+                                cnv_file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
+                                output_png = "$ploting_prefix",
+                                baf_file = "${utils.impute_directory}/${utils.tumourName}_heterozygousMutBAFs_haplotyped.txt"
+
+                              )
+                              """
+    )
+
+    runRcode(cnv_plot)
     spark.stop()
   }
 
@@ -47,22 +82,25 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     utils.concatenateBAFfiles(spark = spark, inputStart = s"${utils.impute_directory}/${utils.tumourName}_impute_output_")
   }
 
+
+  def runRcode(cmd: Seq[String]): Unit = {
+    import scala.sys.process.*
+    val exitCode = cmd.!
+
+    // Check the exit code
+    if (exitCode == 0) {
+      println("R script executed successfully")
+    } else {
+      println(s"R script failed with exit code $exitCode")
+      System.exit(1)
+    }
+  }
+
   def segmentation(): Unit = {
 
-    def runRcode(cmd: Seq[String]): Unit = {
-      import scala.sys.process.*
-      val exitCode = cmd.!
-
-      // Check the exit code
-      if (exitCode == 0) {
-        println("R script executed successfully")
-      } else {
-        println(s"R script failed with exit code $exitCode")
-        System.exit(1)
-      }
-    }
 
     // add print segmenting
+    val ploting_prefix = s"${utils.plots_directory}/${utils.tumourName}_"
     val cmd_segmentation = Seq(
       "Rscript",
       "-e",
@@ -73,6 +111,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                 samplename = "${utils.tumourName}",
                 inputfile = "${utils.impute_directory}/${utils.tumourName}_heterozygousMutBAFs_haplotyped.txt",
                 outputfile = "${utils.working_directory}/${utils.tumourName}.BAFsegmented.txt",
+                output_png="$ploting_prefix"
               )
               """
     )
@@ -87,7 +126,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
     val input_baf = s"${utils.working_directory}/${utils.tumourName}_mutantBAF.tab"
 
     val outputfile_prefix = s"${utils.working_directory}/${utils.tumourName}_"
-    val ploting_prefix = s"${utils.plots_directory}/${utils.tumourName}_"
+
     val log_segment_file = s"${utils.impute_directory}/${utils.tumourName}.logRsegmented.txt"
     // add print fit copy
     val cmd_fit_copy_number = Seq(
@@ -108,7 +147,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                   """
     )
 
-    runRcode(cmd_fit_copy_number)
+        runRcode(cmd_fit_copy_number)
 
     // add sublonal
     val call_subclones = Seq(
@@ -118,20 +157,19 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                       source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
 
                       callSubclones(
-                        sample.name = "${utils.tumourName}",
                         baf.segmented.file = "$input_baf_segment",
                         logr.file = "$logr_file",
                         rho.psi.file = "${utils.working_directory}/${utils.tumourName}_rho_and_psi.txt",
                         output.file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
-                        output.gw.figures.prefix= "${utils.plots_directory}/${utils.tumourName}_BattenbergProfile",
-                        masking_output_file="${utils.plots_directory}/${utils.tumourName}_segment_masking_details.txt",
                         chr_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
 
                       )
                       """
     )
 
-    runRcode(call_subclones)
+        runRcode(call_subclones)
+
+
   }
 
 
