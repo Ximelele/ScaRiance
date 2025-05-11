@@ -157,12 +157,10 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
                       source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
 
                       callSubclones(
-                        sample.name = "${utils.tumourName}",
                         baf.segmented.file = "$input_baf_segment",
                         logr.file = "$logr_file",
                         rho.psi.file = "${utils.working_directory}/${utils.tumourName}_rho_and_psi.txt",
                         output.file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
-                        masking_output_file="${utils.plots_directory}/${utils.tumourName}_segment_masking_details.txt",
                         chr_names = c(${utils.chromosomeNames.map(_.toString).mkString("\"", "\", \"", "\"")})
 
                       )

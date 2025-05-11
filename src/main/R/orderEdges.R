@@ -1,6 +1,3 @@
-#' Convenience function that orders edges or squares
-#' @author dw9, kd7
-#' @noRd
 orderEdges <- function(levels, observedBAF, totalCopyNumber, minorCNV, majorCNV) {
   result <- matrix(nrow = 6, ncol = 2)
   colnames(result) <- c("Major.Copy.Number", "Minor.Copy.Number")
@@ -45,11 +42,6 @@ orderEdges <- function(levels, observedBAF, totalCopyNumber, minorCNV, majorCNV)
 }
 
 
-          #' Function that fetches the nearest edge for a given a rho, psi, BAF and major and minor allele
-          #' that corresponds to a certain mix of two copy number states. It first identifies the nearest edge
-          #' and then just compares the vertices at the end of this edge to find the best corner.
-          #' @author dw9, kd7
-          #' @noRd
 GetNearestCorners_bestOption <- function(rho, BAFreq, nMajor, nMinor) {
   nMaj = c(floor(nMajor), ceiling(nMajor), floor(nMajor), ceiling(nMajor))
   nMin = c(ceiling(nMinor), ceiling(nMinor), floor(nMinor), floor(nMinor))
@@ -81,8 +73,7 @@ GetNearestCorners_bestOption <- function(rho, BAFreq, nMajor, nMinor) {
     }
   }
     # case 2c:
-    #else if( is.finite(BAF_levels[2]) &&  (BAFreq>BAF_levels[2]) ) { # kjd 14-2-2014
-  else if (BAFreq > BAF_levels[2]) { #DCW
+  else if (BAFreq > BAF_levels[2]) {
     if (ntot < x + y + 1) {
       nMaj1 = y
       nMin1 = x

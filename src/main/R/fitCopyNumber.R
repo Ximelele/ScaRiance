@@ -3,34 +3,8 @@ source("/app/ScalaBattenberg/src/main/R/orderEdges.R")
 library("ASCAT")
 library("assertthat")
 
-#' Fit copy number
-#'
-#' Function that will fit a clonal copy number profile to segmented data. It first
-#' matches the raw LogR with the segmented BAF to create segmented LogR. Then ASCAT
-#' is run to obtain a clonal copy number profile. Beyond logRsegmented it produces
-#' the rho_and_psi file and the cellularity_ploidy file.
-#' @param samplename Samplename used to name the segmented logr output file
-#' @param outputfile.prefix Prefix used for all output file names, except logRsegmented
-#' @param inputfile.baf.segmented Filename that points to the BAF segmented data
-#' @param inputfile.baf Filename that points to the raw BAF data
-#' @param inputfile.logr Filename that points to the raw LogR data
-#' @param dist_choice The distance metric that is used internally to rank clonal copy number solutions
-#' @param ascat_dist_choice The distance metric used to obtain an initial cellularity and ploidy estimate
-#' @param min.ploidy The minimum ploidy to consider (Default 1.6)
-#' @param max.ploidy The maximum ploidy to consider (Default 4.8)
-#' @param min.rho The minimum cellularity to consider (Default 0.1)
-#' @param max.rho The maximum cellularity to consider (Default 1.0)
-#' @param min.goodness The minimum goodness of fit for a solution to have to be considered (Default 63)
-#' @param uninformative_BAF_threshold The threshold beyond which BAF becomes uninformative (Default 0.51)
-#' @param gamma_param Technology parameter, compaction of Log R profiles. Expected decrease in case of deletion in diploid sample, 100 "\%" aberrant cells; 1 in ideal case, 0.55 of Illumina 109K arrays (Default 1)
-#' @param use_preset_rho_psi Boolean whether to use user specified rho and psi values (Default F)
-#' @param preset_rho A user specified rho to fit a copy number profile to (Default NA)
-#' @param preset_psi A user specified psi to fit a copy number profile to (Default NA)
-#' @param read_depth Legacy parameter that is no longer used (Default 30)
-#' @param analysis A String representing the type of analysis to be run, this determines whether the distance figure is produced (Default paired)
-#' @author dw9, sd11
-#' @export
-fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmented, inputfile.baf, inputfile.logr, dist_choice = 0, ascat_dist_choice = 1, min.ploidy = 1.6, max.ploidy = 4.8, min.rho = 0.1, max.rho = 1.0, min.goodness = 63, uninformative_BAF_threshold = 0.51, gamma_param = 1, use_preset_rho_psi = F, preset_rho = NA, preset_psi = NA, read_depth = 30, log_segment_file, ploting_prefix) {
+
+fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmented, inputfile.baf, inputfile.logr, dist_choice = 0, ascat_dist_choice = 1, min.ploidy = 1.6, max.ploidy = 4.8, min.rho = 0.1, max.rho = 1.0, min.goodness = 63, uninformative_BAF_threshold = 0.51, gamma_param = 1, read_depth = 30, log_segment_file, ploting_prefix) {
 
 
   assert_that(file.exists(inputfile.baf.segmented), msg = "Baf segment file not found")
@@ -45,7 +19,6 @@ fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmente
     stop(paste("Supplied rho range must be larger than 0.01: ", min.rho, "-", max.rho, sep = ""))
   }
 
-  # Read in the required data
 
   segmented.BAF.data = as.data.frame(readr::read_tsv(file = inputfile.baf.segmented, col_names = T, col_types = "cinnn"))
 
@@ -159,15 +132,15 @@ fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmente
   }
 
 
-  distance.outfile = paste(ploting_prefix, "distance.png", sep = "", collapse = "") # kjd 20-2-2014
-  copynumberprofile.outfile = paste(ploting_prefix, "copynumberprofile.png", sep = "", collapse = "") # kjd 20-2-2014
-  nonroundedprofile.outfile = paste(ploting_prefix, "nonroundedprofile.png", sep = "", collapse = "") # kjd 20-2-2014
+  distance.outfile = paste(ploting_prefix, "distance.png", sep = "", collapse = "")
+  copynumberprofile.outfile = paste(ploting_prefix, "copynumberprofile.png", sep = "", collapse = "")
+  nonroundedprofile.outfile = paste(ploting_prefix, "nonroundedprofile.png", sep = "", collapse = "")
   cnaStatusFile = paste(outputfile.prefix, "copynumber_solution_status.txt", sep = "", collapse = "")
 
-  ascat_optimum_pair = runASCAT(logR, 1 - BAF.data[, 3], segLogR, segBAF, chr.segs, ascat_dist_choice, distance.outfile, copynumberprofile.outfile, nonroundedprofile.outfile, cnaStatusFile = cnaStatusFile, gamma = gamma_param, allow100percent = T, reliabilityFile = NA, min.ploidy = min.ploidy, max.ploidy = max.ploidy, min.rho = min.rho, max.rho = max.rho, min.goodness, chr.names = chr.names, analysis = "paired") # kjd 4-2-2014
+  ascat_optimum_pair = runASCAT(logR, 1 - BAF.data[, 3], segLogR, segBAF, chr.segs, ascat_dist_choice, distance.outfile, copynumberprofile.outfile, nonroundedprofile.outfile, cnaStatusFile = cnaStatusFile, gamma = gamma_param, allow100percent = T, reliabilityFile = NA, min.ploidy = min.ploidy, max.ploidy = max.ploidy, min.rho = min.rho, max.rho = max.rho, min.goodness, chr.names = chr.names, analysis = "paired")
 
   # All is set up, now run ASCAT to obtain a clonal copynumber profile
-  out = run_clonal_ASCAT(logR, 1 - BAF.data[, 3], segLogR, segBAF, chr.segs, matched.segmented.BAF.data, ascat_optimum_pair, dist_choice, NA, NA, NA, gamma_param = gamma_param, read_depth, uninformative_BAF_threshold, allow100percent = T, reliabilityFile = NA, psi_min_initial = min.ploidy, psi_max_initial = max.ploidy, rho_min_initial = min.rho, rho_max_initial = max.rho, chr.names = chr.names) # kjd 21-2-2014
+  out = run_clonal_ASCAT(logR, 1 - BAF.data[, 3], segLogR, segBAF, chr.segs, matched.segmented.BAF.data, ascat_optimum_pair, dist_choice, NA, NA, NA, gamma_param = gamma_param, read_depth, uninformative_BAF_threshold, allow100percent = T, reliabilityFile = NA, psi_min_initial = min.ploidy, psi_max_initial = max.ploidy, rho_min_initial = min.rho, rho_max_initial = max.rho, chr.names = chr.names)
 
   ascat_optimum_pair_fraction_of_genome = out$output_optimum_pair_without_ref
   ascat_optimum_pair_ref_seg = out$output_optimum_pair
@@ -178,34 +151,7 @@ fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmente
   write.table(rho_psi_output, paste(outputfile.prefix, "rho_and_psi.txt", sep = ""), quote = F, sep = "\t")
 }
 
-#' Fit subclonal copy number
-#'
-#' This function fits a subclonal copy number profile where a clonal profile is unlikely.
-#' It goes over each segment of a clonal copy number profile and does a simple t-test. If the
-#' test is significant it is unlikely that the data can be explained by a single copy number
-#' state. We therefore fit a second state, i.e. there are two cellular populations with each
-#' a different state: Subclonal copy number.
-#' @param sample.name Name of the sample, used in figures
-#' @param baf.segmented.file String that points to a file with segmented BAF output
-#' @param logr.file String that points to the raw LogR file to be used in the subclonal copy number figures
-#' @param rho.psi.file String pointing to the rho_and_psi file generated by \code{fit.copy.number}
-#' @param output.file Filename of the file where the final copy number fit will be written to
-#' @param output.figures.prefix Prefix of the filenames for the chromosome specific copy number figures
-#' @param output.gw.figures.prefix Prefix of the filenames for the genome wide copy number figures
-#' @param chr_names Vector of allowed chromosome names
-#' @param masking_output_file Filename of where the masking details need to be written. Masking is performed to remove very high copy number state segments
-#' @param max_allowed_state The maximum CN state allowed (Default 100)
-#' @param prior_breakpoints_file A two column file with prior breakpoints, possibly from structural variants. This file must contain two columns: chromosome and position. These are used when making the figures
-#' @param gamma Technology specific scaling parameter for LogR (Default 1)
-#' @param segmentation.gamma Legacy parameter that is no longer used (Default NA)
-#' @param siglevel Threshold under which a p-value becomes significant. When it is significant a second copy number state will be fitted (Default 0.05)
-#' @param maxdist Slack in BAF space to allow a segment to be off it's optimum before becoming significant. A segment becomes significant very quickly when a breakpoint is missed, this parameter alleviates the effect (Default 0.01)
-#' @param seed Seed to set when performing bootstrapping (Default: Current time)
-#' @param calc_seg_baf_option Various options to recalculate the BAF of a segment. Options are: 1 - median, 2 - mean, 3 - ifelse median==0|1, mean, median. (Default: 3)
-#' @author dw9, sd11
-#' @export
-
-callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.file, output.file, output.figures.prefix, output.gw.figures.prefix, chr_names, masking_output_file, max_allowed_state = 250, prior_breakpoints_file = NULL, gamma = 1, segmentation.gamma = NA, siglevel = 0.05, maxdist = 0.01, seed = as.integer(Sys.time()), calc_seg_baf_option = 3) {
+callSubclones = function(baf.segmented.file, logr.file, rho.psi.file, output.file, chr_names, gamma = 1, siglevel = 0.05, maxdist = 0.01, seed = as.integer(Sys.time())) {
 
 
   set.seed(seed)
@@ -224,10 +170,8 @@ callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.fil
 
 
   # Load the raw LogR data
-
   LogRvals = as.data.frame(readr::read_tsv(file = logr.file, col_names = T, col_types = "cin"))
   if (colnames(LogRvals)[1] == "X" || colnames(LogRvals)[1] == "chrX") {
-    # If there were rownames, then delete this column. Should not be an issue with new BB runs
     LogRvals = LogRvals[, -1]
   }
 
@@ -247,21 +191,6 @@ callSubclones = function(sample.name, baf.segmented.file, logr.file, rho.psi.fil
 
 }
 
-#' Given all the determined values make a copy number call for each segment
-#'
-#' @param BAFvals BAFsegmented data.frame with 5 columns
-#' @param LogRvals Raw logR values in data.frame with 3 columns
-#' @param rho Optimal rho value, the choosen cellularity
-#' @param psi Optimal psi value, the choosen ploidy
-#' @param gamma Platform gamma parameter
-#' @param ctrans Named vector of chromosome names
-#' @param ctrans.logR Named vector of chromosome names
-#' @param maxdist Max distance a segment is tolerated to be not considered for subclonal copy number
-#' @param siglevel Level at which a segment can become significantly different from the nearest clonal state
-#' @param noperms Number of bootstrap permutations
-#' @return A data.frame with copy number determined for each segment
-#' @author dw9
-#' @noRd
 determine_copynumber = function(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctrans.logR, maxdist, siglevel) {
   BAFphased = BAFvals[, 4]
   BAFseg = BAFvals[, 5]
@@ -324,7 +253,7 @@ determine_copynumber = function(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctra
     # Problem if rho=1 and nMaj=0 and nMin=0
     levels[nMaj == 0 & nMin == 0] = 0.5
 
-    #DCW - just test corners on the nearest edge to determine clonality
+
     # If the segment is called as subclonal, this is the edge that will be used to determine the subclonal proportions that are reported first
     all.edges = orderEdges(levels, l, ntot, x, y)
     nMaj.test = all.edges[1, 1]
@@ -342,7 +271,7 @@ determine_copynumber = function(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctra
       pval[i] = 1
     }
 
-    #DCW 240314
+
     BAFpvals[(switchpoints[i] + 1):switchpoints[i + 1]] = pval[i]
 
     # If the difference is significant, call subclonal level
@@ -379,281 +308,10 @@ determine_copynumber = function(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctra
 }
 
 
-#' Merge copy number segments
-#'
-#' Merges segments if there is not enough evidence for them to be separate. Two adjacent segments are merged
-#' when they are either fit with the same clonal copy number state or when their BAF is not significantly different
-#' and their logR puts them in the same square.
-#' @param subclones A completely fit copy number profile in Battenberg output format
-#' @param bafsegmented A BAFsegmented data.frame with the 5 columns that corresponds to the subclones file
-#' @param logR The raw logR data
-#' @param rho The rho estimate that the profile was fit with
-#' @param psi the psi estimate that the profile was fit with
-#' @param platform_gamma The gamma parameter for this platform
-#' @param calc_seg_baf_option Various options to recalculate the BAF of a segment. Options are: 1 - median, 2 - mean, 3 - ifelse median== 0|1, mean, median. (Default: 3)
-#' @param verbose A boolean to show merging operations (Default: FALSE)
-#' @return A list with two fields: bafsegmented and subclones. The subclones field contains a data.frame in
-#' Battenberg output format with the merged segments. The bafsegmented field contains the BAFsegmented data
-#' corresponding to the provided subclones data.frame.
-#' @author sd11, tl
-#' @noRd
-merge_segments = function(subclones, bafsegmented, logR, rho, psi, platform_gamma, calc_seg_baf_option = 3, verbose = F) {
-
-  calc_nmin = function(rho, psi, baf, logr, platform_gamma) {
-    return((rho -
-      1 -
-      (baf - 1) *
-        2^(logr / platform_gamma) *
-        ((1 - rho) * 2 + rho * psi)) / rho)
-  }
-
-  calc_nmaj = function(rho, psi, baf, logr, platform_gamma) {
-    return((rho - 1 + baf *
-      2^(logr / platform_gamma) *
-      ((1 - rho) * 2 + rho * psi)) / rho)
-  }
-
-  # Convert DF into GRanges objects
-  df2gr = function(DF, chr, pos1, pos2) {
-    return(GenomicRanges::makeGRangesFromDataFrame(df = DF,
-                                                   keep.extra.columns = T,
-                                                   ignore.strand = T,
-                                                   seqinfo = NULL,
-                                                   seqnames.field = chr,
-                                                   start.field = pos1,
-                                                   end.field = pos2,
-                                                   starts.in.df.are.0based = F))
-  }
-
-  # Function called when two segments have not been merged so there is no need to recheck those again
-  updateNeighbour = function(subclones, INDEX, INDEX_N) {
-    if (INDEX_N > INDEX) {
-      subclones$Next_checked[INDEX] = T
-      subclones$Prev_checked[INDEX_N] = T
-    } else {
-      subclones$Prev_checked[INDEX] = T
-      subclones$Next_checked[INDEX_N] = T
-    }
-    return(subclones)
-  }
-
-  # Function called when two segments have been merged so we need to recheck its two neighbours
-  updateAround = function(subclones, INDEX) {
-    if (INDEX > 1) {
-      subclones$Prev_checked[INDEX] = F
-      subclones$Next_checked[INDEX - 1] = F
-    } else {
-      subclones$Prev_checked[INDEX] = T
-    }
-    if (INDEX < length(subclones)) {
-      subclones$Next_checked[INDEX] = F
-      subclones$Prev_checked[INDEX + 1] = F
-    } else {
-      subclones$Next_checked[INDEX] = T
-    }
-    return(subclones)
-  }
-
-  # Function called to test whether two segments must be checked
-  checkStatus = function(subclones, INDEX, INDEX_N) {
-    if (INDEX_N > INDEX) {
-      # Largest segment (INDEX_N) is after smallest one (INDEX)
-      stopifnot(subclones$Next_checked[INDEX] == subclones$Prev_checked[INDEX_N])
-      if (subclones$Next_checked[INDEX] && subclones$Prev_checked[INDEX_N]) {
-        return(T)
-      } else {
-        return(F)
-      }
-    } else {
-      # Largest segment (INDEX_N) is before smallest one (INDEX)
-      stopifnot(subclones$Prev_checked[INDEX] == subclones$Next_checked[INDEX_N])
-      if (subclones$Prev_checked[INDEX] && subclones$Next_checked[INDEX_N]) {
-        return(T)
-      } else {
-        return(F)
-      }
-    }
-  }
-
-  # Function to merge two segments
-  merge_seg = function(subclones, bafsegmented, logR, INDEX, INDEX_N, calc_seg_baf_option) {
-    # Update start/end information
-    if (INDEX_N < INDEX) {
-      GenomicRanges::end(subclones[INDEX_N]) = GenomicRanges::end(subclones[INDEX])
-    } else {
-      GenomicRanges::start(subclones[INDEX_N]) = GenomicRanges::start(subclones[INDEX])
-    }
-    # Remove segment
-    subclones = subclones[-INDEX]
-    if (INDEX_N < INDEX) INDEX = INDEX - 1
-    # Reset neighbour checking
-    subclones = updateAround(subclones, INDEX)
-    if (calc_seg_baf_option == 1) {
-      # This uses median
-      NEW_BAF = median(bafsegmented$BAFphased[GenomicRanges::findOverlaps(subclones[INDEX], bafsegmented)@to], na.rm = T)
-    } else if (calc_seg_baf_option == 2) {
-      # This uses mean
-      NEW_BAF = mean(bafsegmented$BAFphased[GenomicRanges::findOverlaps(subclones[INDEX], bafsegmented)@to], na.rm = T)
-    } else if (calc_seg_baf_option == 3) {
-      # We'll prefer the median BAF as a segment summary
-      # but change to the mean when the median is extreme
-      # as at 0 or 1 the BAF is uninformative for the fitting
-      median_BAF = median(bafsegmented$BAFphased[GenomicRanges::findOverlaps(subclones[INDEX], bafsegmented)@to], na.rm = T)
-      mean_BAF = mean(bafsegmented$BAFphased[GenomicRanges::findOverlaps(subclones[INDEX], bafsegmented)@to], na.rm = T)
-      if (median_BAF != 0 && median_BAF != 1) {
-        NEW_BAF = median_BAF
-      } else {
-        NEW_BAF = mean_BAF
-      }
-      rm(median_BAF, mean_BAF)
-    }
-    # Update both BAF and logR information
-    subclones[INDEX]$BAF = NEW_BAF
-    INDEX_logR = GenomicRanges::findOverlaps(subclones[INDEX], logR)@to
-    if (length(INDEX_logR) == 0) {
-      subclones[INDEX]$LogR = 0
-    } else {
-      subclones[INDEX]$LogR = mean(logR$logR[INDEX_logR], na.rm = T)
-    }
-    rm(INDEX_logR)
-    # Update segmented baf
-    bafsegmented$BAFseg[GenomicRanges::findOverlaps(subclones[INDEX], bafsegmented)@to] = NEW_BAF
-    # TODO Update the logRseg as well
-    # Reset IDs
-    subclones$ID = 1:length(subclones)
-    return(list(subclones = subclones, bafsegmented = bafsegmented))
-  }
-
-  requireNamespace("GenomicRanges")
-  if (!(calc_seg_baf_option %in% 1:3)) calc_seg_baf_option = 3
-  # Convert DFs into GRanges objects
-  if (verbose) print('Convert DFs into GRanges objects')
-  subclones = df2gr(subclones, 'chr', 'startpos', 'endpos')
-  bafsegmented = df2gr(bafsegmented, 'Chromosome', 'Position', 'Position')
-  logR = df2gr(logR, 'Chromosome', 'Position', 'Position')
-  names(GenomicRanges::mcols(logR)) = 'logR'
-  # Split GRanges objects by chromosomes
-  chr_names = GenomicRanges::seqnames(GenomicRanges::seqinfo(bafsegmented))
-  subclones = lapply(chr_names, function(x) subclones[GenomicRanges::seqnames(subclones) == x])
-  bafsegmented = lapply(chr_names, function(x) bafsegmented[GenomicRanges::seqnames(bafsegmented) == x])
-  logR = lapply(chr_names, function(x) logR[GenomicRanges::seqnames(logR) == x])
-  stopifnot(all(sapply(subclones, length) > 0) &&
-              all(sapply(bafsegmented, length) > 0) &&
-              all(sapply(logR, length) > 0))
-  names(subclones) = chr_names
-  names(bafsegmented) = chr_names
-  names(logR) = chr_names
-  # For each chromosome
-  for (CHR in chr_names) {
-    if (verbose) print(paste0('Merging segments within: ', CHR))
-    # Define ID, Prev_checked and Next_checked to help processing data
-    subclones[[CHR]]$ID = 1:length(subclones[[CHR]])
-    subclones[[CHR]]$Prev_checked = F
-    subclones[[CHR]]$Next_checked = F
-    subclones[[CHR]]$Prev_checked[1] = T
-    subclones[[CHR]]$Next_checked[length(subclones[[CHR]])] = T
-    # Pick all possible IDs
-    IDs = subclones[[CHR]]$ID
-    while (length(IDs) != 0) {
-      # Amongst all IDs, select the ones that must be checked
-      IDs = subclones[[CHR]]$ID[which(!subclones[[CHR]]$Prev_checked | !subclones[[CHR]]$Next_checked)]
-      if (length(IDs) == 0) break
-      # Amongst all of those, select the smallest one
-      INDEX = IDs[which.min(GenomicRanges::width(subclones[[CHR]][which(subclones[[CHR]]$ID %in% IDs)]))]
-      # Select neighbours (two or one if segments is first or last)
-      if (INDEX == 1) {
-        Neighbours = order(GenomicRanges::distance(subclones[[CHR]][INDEX], subclones[[CHR]][INDEX + 1]))
-        names(Neighbours) = INDEX + 1
-      } else if (INDEX == length(subclones[[CHR]])) {
-        Neighbours = order(GenomicRanges::distance(subclones[[CHR]][INDEX], subclones[[CHR]][INDEX - 1]))
-        names(Neighbours) = INDEX - 1
-      } else {
-        Neighbours = order(GenomicRanges::distance(subclones[[CHR]][INDEX], subclones[[CHR]][INDEX + c(-1, 1)]))
-        names(Neighbours) = INDEX + c(-1, 1)
-      }
-      if (verbose) print(paste0('Working on segment: ', INDEX, ' (', subclones[[CHR]][INDEX], ')'))
-      # For each neighbour
-      for (i in Neighbours) {
-        INDEX_N = as.numeric(names(Neighbours[i]))
-        if (verbose) print(paste0('Checking neighbour: ', INDEX_N, ' (', subclones[[CHR]][INDEX_N], '; distance=', GenomicRanges::distance(subclones[[CHR]][INDEX], subclones[[CHR]][INDEX_N]), ')'))
-        # Test whether seg and neighbour (INDEX and INDEX_N) have already been checked
-        if (checkStatus(subclones[[CHR]], INDEX, INDEX_N)) { if (verbose) { print('Already checked') }; next }
-        # Test whether seg and neighbour are far away from each other
-        if (GenomicRanges::distance(subclones[[CHR]][INDEX], subclones[[CHR]][INDEX_N]) > 3e6) {
-          if (verbose) print('Distance > 3Mb - do not merge')
-          subclones[[CHR]] = updateNeighbour(subclones[[CHR]], INDEX, INDEX_N)
-        } else {
-          # Test whether seg and neighbour have the same clonal CN solution
-          if (subclones[[CHR]]$nMaj1_A[INDEX] == subclones[[CHR]]$nMaj1_A[INDEX_N] &&
-            subclones[[CHR]]$nMin1_A[INDEX] == subclones[[CHR]]$nMin1_A[INDEX_N] &&
-            subclones[[CHR]]$frac1_A[INDEX] == 1 &&
-            subclones[[CHR]]$frac1_A[INDEX_N] == 1) {
-            if (verbose) print('Same clonal CN solution - merge')
-            res = merge_seg(subclones[[CHR]], bafsegmented[[CHR]], logR[[CHR]], INDEX, INDEX_N, calc_seg_baf_option)
-            subclones[[CHR]] = res$subclones
-            bafsegmented[[CHR]] = res$bafsegmented
-            rm(res)
-            break
-          } else {
-            # Test whether seg and neighbour have different BAF/logR distributions
-            if (verbose) print('Different CN solutions: check BAF and logR')
-            nmin_curr = round(calc_nmin(rho, psi, subclones[[CHR]]$BAF[INDEX], subclones[[CHR]]$LogR[INDEX], platform_gamma))
-            nmaj_curr = round(calc_nmaj(rho, psi, subclones[[CHR]]$BAF[INDEX], subclones[[CHR]]$LogR[INDEX], platform_gamma))
-            nmin_other = round(calc_nmin(rho, psi, subclones[[CHR]]$BAF[INDEX_N], subclones[[CHR]]$LogR[INDEX_N], platform_gamma))
-            nmaj_other = round(calc_nmaj(rho, psi, subclones[[CHR]]$BAF[INDEX_N], subclones[[CHR]]$LogR[INDEX_N], platform_gamma))
-            if (nmin_curr == nmin_other || nmaj_curr == nmaj_other) {
-              # Test whether there are more than 10 values to check significance
-              if (sum(!is.na(logR[[CHR]]$logR[GenomicRanges::findOverlaps(subclones[[CHR]][INDEX], logR[[CHR]])@to])) > 10 &&
-                sum(!is.na(logR[[CHR]]$logR[GenomicRanges::findOverlaps(subclones[[CHR]][INDEX_N], logR[[CHR]])@to])) > 10 &&
-                sum(!is.na(bafsegmented[[CHR]]$BAFphased[GenomicRanges::findOverlaps(subclones[[CHR]][INDEX], bafsegmented[[CHR]])@to])) > 10 &&
-                sum(!is.na(bafsegmented[[CHR]]$BAFphased[GenomicRanges::findOverlaps(subclones[[CHR]][INDEX_N], bafsegmented[[CHR]])@to])) > 10) {
-                logr_significant = t.test(logR[[CHR]]$logR[GenomicRanges::findOverlaps(subclones[[CHR]][INDEX], logR[[CHR]])@to],
-                                          logR[[CHR]]$logR[GenomicRanges::findOverlaps(subclones[[CHR]][INDEX_N], logR[[CHR]])@to])$p.value < 0.05
-                baf_significant = t.test(bafsegmented[[CHR]]$BAFphased[GenomicRanges::findOverlaps(subclones[[CHR]][INDEX], bafsegmented[[CHR]])@to],
-                                         bafsegmented[[CHR]]$BAFphased[GenomicRanges::findOverlaps(subclones[[CHR]][INDEX_N], bafsegmented[[CHR]])@to])$p.value < 0.05
-                if ((!logr_significant) && (!baf_significant)) {
-                  if (verbose) print('No significant difference - merge')
-                  res = merge_seg(subclones[[CHR]], bafsegmented[[CHR]], logR[[CHR]], INDEX, INDEX_N, calc_seg_baf_option)
-                  subclones[[CHR]] = res$subclones
-                  bafsegmented[[CHR]] = res$bafsegmented
-                  rm(res)
-                  break
-                } else {
-                  if (verbose) print('Significant difference - do not merge')
-                  subclones[[CHR]] = updateNeighbour(subclones[[CHR]], INDEX, INDEX_N)
-                }
-              } else {
-                if (verbose) print('Too few values - do not merge')
-                subclones[[CHR]] = updateNeighbour(subclones[[CHR]], INDEX, INDEX_N)
-              }
-            } else {
-              if (verbose) print('Different squares - do not merge')
-              subclones[[CHR]] = updateNeighbour(subclones[[CHR]], INDEX, INDEX_N)
-            }
-          }
-        }
-      }; rm(i)
-    }
-  }; rm(CHR)
-  if (verbose) print('Convert GRanges objects into DFs')
-  bafsegmented = data.frame(Reduce(c, bafsegmented), stringsAsFactors = F)[, -c(3:5)]
-  bafsegmented$seqnames = as.character(bafsegmented$seqnames)
-  colnames(bafsegmented)[1:2] = c('Chromosome', 'Position')
-  subclones = data.frame(Reduce(c, subclones), stringsAsFactors = F)[, -c(4:5)]
-  subclones$seqnames = as.character(subclones$seqnames)
-  colnames(subclones)[1:3] = c('Chromosome', 'Start.Pos', 'End.Pos')
-  subclones$ID = NULL
-  subclones$Prev_checked = NULL
-  subclones$Next_checked = NULL
-  return(list(bafsegmented = bafsegmented, subclones = subclones))
-}
-
-
 #' Load the rho and psi estimates from a file.
 #' @noRd
 load.rho.psi.file = function(rho.psi.file) {
   rho_psi_info = read.table(rho.psi.file, header = T, sep = "\t", stringsAsFactors = F)
-  # Always use best solution from grid search - reference segment sometimes gives strange results
   rho = rho_psi_info$rho[rownames(rho_psi_info) == "FRAC_GENOME"] # rho = tumour percentage (called tp in previous versions)
   psit = rho_psi_info$psi[rownames(rho_psi_info) == "FRAC_GENOME"] # psi of tumour cells
   goodness = rho_psi_info$distance[rownames(rho_psi_info) == "FRAC_GENOME"] # goodness of fit
