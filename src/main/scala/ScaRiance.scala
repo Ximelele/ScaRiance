@@ -37,7 +37,9 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
         "Rscript",
         "-e",
         s"""
+
                               source("/app/.ScaRiance/src/main/R/plotting.R")
+
 
                               plot.haplotype.data(
                                 haplotyped.baf.file = "${utils.impute_directory}/${utils.tumourName}_impute_output_chr${chrom.toString.stripPrefix("chr")}_heterozygousMutBAFs_haplotyped.txt",
@@ -53,7 +55,9 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
       "Rscript",
       "-e",
       s"""
+
                               source("/app/.ScaRiance/src/main/R/plotting.R")
+
 
                               create_cnv_plot(
                                 cnv_file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
