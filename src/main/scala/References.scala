@@ -11,7 +11,7 @@ class References:
   def setPostfixDirectory(): Unit = {
     g1000prefix = "/app/references38/1000G_loci_hg38_chr/1kg.phase3.v5a_GRCh38nounref_loci_"
     g1000alleleprefix = "/app/references38/1000G_loci_hg38_chr/1kg.phase3.v5a_GRCh38nounref_allele_index_"
-    impute_file = "/app/references38/impute_info.txt"
+    impute_file = "/app/references38/imputation_chr/impute_info.txt"
     problemLociFile = "/app/references38/probloci_chr/probloci.txt.gz"
     beagleref = "/app/references38/beagle_chr/CHROMNAME.1kg.phase3.v5a_GRCh38nounref.vcf.gz"
     beaglejar = "/app/references38/beagle_chr/beagle.08Feb22.fa4.jar"
