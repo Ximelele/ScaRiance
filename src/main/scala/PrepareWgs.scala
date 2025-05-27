@@ -218,6 +218,7 @@ case class PrepareWgs():
 
 
     joinedDf = joinedDf.persist(StorageLevel.MEMORY_AND_DISK)
+    joinedDf.show()
 
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("normalBAF").as(utils.tumourName)), BAFnormalFile)
     utils.saveSingleFile(joinedDf.select(col("Chromosome"), col("Position"), col("mutantBAF").as(utils.tumourName)), BAFmutantFile)

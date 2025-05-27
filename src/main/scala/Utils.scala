@@ -150,7 +150,7 @@ case class Utils():
         resultDf = resultDf.union(currentDf)
       }
     }
-
+    resultDf.show()
     resultDf
   }
 
@@ -205,7 +205,7 @@ case class Utils():
     if (resultDf == null) {
       return spark.emptyDataFrame
     }
-
+    resultDf.show()
     resultDf
   }
 
@@ -244,6 +244,7 @@ case class Utils():
       when(extractChr === "X", 100).otherwise(extractChr.cast("int")),
       col("Position").cast("int")
     )
+    resultDf.show()
     saveSingleFile(resultDf, s"$impute_directory/${tumourName}_heterozygousMutBAFs_haplotyped.txt")
   }
 
@@ -279,6 +280,7 @@ case class Utils():
       chromosomeNames = ((1 to 22) :+ "X").toList.par
     }
 
+    println(chromosomeNames)
 
   }
 
@@ -348,6 +350,8 @@ case class Utils():
       // Compare values
       val comparison = Math.abs(chrXLengthPerRead - avgLengthPerRead)
       val result = comparison < 0.1
+
+      println(s"Patient is male: ${result.toString}")
 
       result
 

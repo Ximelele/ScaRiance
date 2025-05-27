@@ -37,7 +37,9 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
         "Rscript",
         "-e",
         s"""
-                              source("/app/ScalaBattenberg/src/main/R/plotting.R")
+
+                              source("/app/.ScaRiance/src/main/R/plotting.R")
+
 
                               plot.haplotype.data(
                                 haplotyped.baf.file = "${utils.impute_directory}/${utils.tumourName}_impute_output_chr${chrom.toString.stripPrefix("chr")}_heterozygousMutBAFs_haplotyped.txt",
@@ -53,7 +55,9 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
       "Rscript",
       "-e",
       s"""
-                              source("/app/ScalaBattenberg/src/main/R/plotting.R")
+
+                              source("/app/.ScaRiance/src/main/R/plotting.R")
+
 
                               create_cnv_plot(
                                 cnv_file = "${utils.working_directory}/${utils.tumourName}_copynumber.txt",
@@ -105,7 +109,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
       "Rscript",
       "-e",
       s"""
-              source("/app/ScalaBattenberg/src/main/R/Segmentation.R")
+              source("/app/.ScaRiance/src/main/R/Segmentation.R")
 
               segment.baf.phased(
                 samplename = "${utils.tumourName}",
@@ -133,7 +137,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
       "Rscript",
       "-e",
       s"""
-                  source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
+                  source("/app/.ScaRiance/src/main/R/fitCopyNumber.R")
 
                   fit.copy.number(
                     samplename = "${utils.tumourName}",
@@ -154,7 +158,7 @@ case class ScaRiance(control_file: String, tumour_file: String, skip_allele_coun
       "Rscript",
       "-e",
       s"""
-                      source("/app/ScalaBattenberg/src/main/R/fitCopyNumber.R")
+                      source("/app/.ScaRiance/src/main/R/fitCopyNumber.R")
 
                       callSubclones(
                         baf.segmented.file = "$input_baf_segment",
