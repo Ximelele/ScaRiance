@@ -280,7 +280,6 @@ case class Utils():
       chromosomeNames = ((1 to 22) :+ "X").toList.par
     }
 
-    println(chromosomeNames)
 
   }
 

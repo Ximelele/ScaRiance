@@ -55,8 +55,6 @@ case class Haplotype():
     snp_data = snp_data.withColumn("hetMutBafs", col("alt_count") / col("denom"))
 
     snp_data = snp_data.select(col("#CHR").as("Chromosome"), col("POS").as("Position"), col("hetMutBafs").as(utils.tumourName))
-    println("Haplotype file")
-    snp_data.show()
     utils.saveSingleFile(snp_data, output_file)
 
   }
