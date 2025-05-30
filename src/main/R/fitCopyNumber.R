@@ -1,5 +1,5 @@
-source("/app/ScalaBattenberg/src/main/R/clonal_ascat.R")
-source("/app/ScalaBattenberg/src/main/R/orderEdges.R")
+source("/app/.ScaRiance/src/main/R/clonal_ascat.R")
+source("/app/.ScaRiance/src/main/R/orderEdges.R")
 library("ASCAT")
 library("assertthat")
 
@@ -189,8 +189,7 @@ callSubclones = function(baf.segmented.file, logr.file, rho.psi.file, output.fil
   ################################################################################################
   res = determine_copynumber(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctrans.logR, maxdist, siglevel)
   subcloneres = res$subcloneres
-  print("output copy number file")
-  print(subcloneres)
+
   write.table(subcloneres, output.file, quote = F, col.names = T, row.names = F, sep = "\t")
 
 }

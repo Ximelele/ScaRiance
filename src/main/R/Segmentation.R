@@ -1,5 +1,5 @@
-source("/app/ScalaBattenberg/src/main/R/fastPCF.R")
-source("/app/ScalaBattenberg/src/main/R/plotting.R")
+source("/app/.ScaRiance/src/main/R/fastPCF.R")
+source("/app/.ScaRiance/src/main/R/plotting.R")
 library("readr")
 
 
