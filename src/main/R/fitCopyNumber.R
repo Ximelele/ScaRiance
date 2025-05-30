@@ -296,7 +296,7 @@ determine_copynumber = function(BAFvals, LogRvals, rho, psi, gamma, ctrans, ctra
       #if called as clonal, use the best corner from the nearest edge
       subcloneres = rbind(subcloneres, c(chrom, startpos - floor(startpos / 1000000000) * 1000000000,
                                          endpos - floor(endpos / 1000000000) * 1000000000, l, pval[i], LogR, ntot,
-                                         nMaj.test[whichclosestlevel.test], nMin.test[whichclosestlevel.test], 1, rep(NA, 57)))
+                                         nMaj.test[whichclosestlevel.test], nMin.test[whichclosestlevel.test]))
 
     }
   }
